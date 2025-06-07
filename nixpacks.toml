@@ -1,11 +1,15 @@
 [phases.setup]
-nixPkgs = ['python39', 'postgresql']
+nixPkgs = ['python39', 'postgresql', 'gcc', 'pkg-config']
 
 [phases.install]
-cmds = ['pip install -r requirements.txt']
+cmds = [
+  'pip install --upgrade pip',
+  'pip install wheel',
+  'pip install -r requirements.txt'
+]
 
 [phases.build]
-cmds = ['echo "Build completed"']
+cmds = ['echo "Build completed successfully"']
 
 [start]
-cmd = 'gunicorn app:app --bind 0.0.0.0:$PORT' 
+cmd = 'gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120' 
