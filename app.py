@@ -17,7 +17,6 @@ import re
 from calendar import monthrange
 import zipfile
 from sqlalchemy import or_, desc
-import pandas as pd
 from io import StringIO
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
