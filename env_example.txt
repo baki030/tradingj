@@ -1,0 +1,27 @@
+# Environment Configuration
+# Copy this file to .env and fill in your own values
+
+# Flask Configuration
+FLASK_ENV=development
+SECRET_KEY=your-super-secret-key-here-generate-a-new-one
+
+# Database Configuration
+# Development
+DEV_DATABASE_URL=sqlite:///trading_journal_dev.db
+
+# Production (use PostgreSQL for production)
+DATABASE_URL=postgresql://username:password@localhost:5432/trading_journal
+
+# Server Configuration
+PORT=5000
+
+# Security Settings (Production)
+SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+
+# Optional: Email settings for password reset (if implemented)
+# MAIL_SERVER=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USE_TLS=True
+# MAIL_USERNAME=your-email@gmail.com
+# MAIL_PASSWORD=your-app-password 

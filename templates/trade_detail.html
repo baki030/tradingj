@@ -1,0 +1,805 @@
+{% extends "base.html" %}
+
+{% block title %}Trade Detail{% endblock %}
+
+{% block content %}
+<style>
+.trade-direction-buy { color: #27ae60; font-weight: 600; }
+.trade-direction-sell { color: #e74c3c; font-weight: 600; }
+.pnl-positive { color: #27ae60; }
+.pnl-negative { color: #e74c3c; }
+
+/* Star Rating Styles */
+.star {
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+.star:hover {
+  filter: drop-shadow(0 2px 4px rgba(251,192,45,0.3));
+}
+
+#star-rating:hover .star {
+  opacity: 0.7;
+}
+
+#star-rating .star:hover,
+#star-rating .star.active {
+  opacity: 1;
+}
+</style>
+
+<div style="margin-top: 2rem; margin-bottom: 1.5rem;">
+  {% if trade and trade.date %}
+    {% set trade_date = trade.date.strftime('%Y-%m-%d') if trade.date else '' %}
+    <a href="/daily-journal?date={{ trade_date }}" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ede9fe; color: #7c5cff; border: none; border-radius: 8px; padding: 0.5rem 1.3rem; font-weight: 600; font-size: 1.08rem; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: background 0.15s;">
+      <span style="font-size: 1.3rem; line-height: 1;">&#8592;</span> Zurück zum Journal
+    </a>
+  {% else %}
+    <a href="/daily-journal" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ede9fe; color: #7c5cff; border: none; border-radius: 8px; padding: 0.5rem 1.3rem; font-weight: 600; font-size: 1.08rem; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: background 0.15s;">
+      <span style="font-size: 1.3rem; line-height: 1;">&#8592;</span> Zurück zum Journal
+    </a>
+  {% endif %}
+</div>
+{% if new_trade or not trade %}
+<div style="max-width: 600px; margin: 2rem auto; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 2.5rem;">
+  <h2 style="color: #7c5cff; font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;">Neuen Trade anlegen</h2>
+  <form id="new-trade-form" method="POST" action="{{ url_for('trade_new') }}">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+      <div><label>Datum & Zeit</label><input name="date" type="datetime-local" style="width:100%"></div>
+      <div><label>Symbol</label><input name="symbol" style="width:100%"></div>
+      <div><label>Position</label><input name="position" style="width:100%"></div>
+      <div><label>Typ</label><input name="direction" style="width:100%"></div>
+      <div><label>Volumen</label><input name="position_size" type="number" step="0.01" style="width:100%"></div>
+      <div><label>Preis (Einstieg)</label><input name="entry_price" type="number" step="0.0001" style="width:100%"></div>
+      <div><label>S / L</label><input name="sl" type="number" step="0.0001" style="width:100%"></div>
+      <div><label>T / P</label><input name="tp" type="number" step="0.0001" style="width:100%"></div>
+      <div><label>Datum & Zeit (Ausstieg)</label><input name="exit_date" type="datetime-local" style="width:100%"></div>
+      <div><label>Preis (Ausstieg)</label><input name="exit_price" type="number" step="0.0001" style="width:100%"></div>
+      <div><label>Kommission</label><input name="kommission" type="number" step="0.01" style="width:100%"></div>
+      <div><label>Swap</label><input name="swap" type="number" step="0.01" style="width:100%"></div>
+      <div><label>Gewinn</label><input name="pnl" type="number" step="0.01" style="width:100%"></div>
+      <div><label>Account</label>
+        <select name="account_id" style="width:100%">
+          {% for acc in accounts %}
+            <option value="{{ acc.id }}">{{ acc.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+      <a href="{{ url_for('daily_journal') }}" class="btn btn-secondary" style="background:#f4f4f4; color:#7c5cff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-weight:500;">Abbrechen</a>
+      <button type="submit" class="btn btn-primary" style="background:#7c5cff; color:#fff; border:none; border-radius:6px; padding:0.5rem 1.2rem; font-weight:500;">Speichern</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div style="display: flex; gap: 3.5rem; align-items: flex-start; max-width: 1500px; margin: 2.5rem auto 0 auto;">
+  <!-- Linke Spalte: Automatisch ausgefüllte Felder als Text -->
+  <div style="flex: 0 0 700px; min-width: 400px; background: #fff; border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 2.5rem 2.2rem 2.5rem 2.2rem;">
+    <div style="margin-bottom: 1.2rem;">
+      <div style="font-size: 2rem; font-weight: 700; color: #232323;">{{ trade.symbol }}</div>
+      <div style="font-size: 1.25rem; color: #7c5cff; font-weight: 600; margin-top: 0.2rem;">{{ trade.date if trade.date is string else trade.date.strftime('%a, %b %d, %Y') }}</div>
+      <div style="font-size: 1rem; color: #b0b0b0; margin-top: 0.1rem;">{{ trade.option }}</div>
+    </div>
+    <!-- NET P&L mit korrekten Farben -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+      {% set net_pl_value = trade.net_pl if trade.net_pl is not none else 0 %}
+      {% if net_pl_value >= 0 %}
+        <div style="font-size: 1.3rem; font-weight: 700; color: #27ae60; letter-spacing: 0.5px;">NET P&L</div>
+      {% else %}
+        <div style="font-size: 1.3rem; font-weight: 700; color: #e573a7; letter-spacing: 0.5px;">NET P&L</div>
+      {% endif %}
+      {% if net_pl_value >= 0 %}
+        <div style="font-size: 2.1rem; font-weight: 700; color: #27ae60;">
+          ${{ '%.2f' % net_pl_value }}
+        </div>
+      {% else %}
+        <div style="font-size: 2.1rem; font-weight: 700; color: #e573a7;">
+          -${{ '%.2f' % (net_pl_value | abs) }}
+        </div>
+      {% endif %}
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; row-gap: 1.1rem; column-gap: 1.5rem; align-items: center; margin-bottom:2.5rem;">
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Typ</div>
+      <div style="font-size: 1.15rem;">
+        <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: {% if trade.direction and trade.direction.lower() == 'buy' %}#dcfce7; color: #166534{% else %}#fef2f2; color: #991b1b{% endif %};">
+          {{ trade.direction.upper() if trade.direction else '-' }}
+        </span>
+      </div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Volumen</div>
+      <div style="color:#000; font-size: 1.15rem;">
+        {% if trade.position_size is not none %}
+          {{ '%.2f' % trade.position_size }}
+        {% else %}
+          0.00
+        {% endif %}
+      </div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Kommission</div>
+      <div style="font-size: 1.15rem;">
+        {% if trade.kommission %}
+          <span class="{% if trade.kommission >= 0 %}pnl-positive{% else %}pnl-negative{% endif %}">${{ '%.2f' % trade.kommission }}</span>
+        {% else %}
+          <span style="color: #000;">$0.00</span>
+        {% endif %}
+      </div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Swap</div>
+      <div style="font-size: 1.15rem;">
+        {% if trade.swap %}
+          <span class="{% if trade.swap >= 0 %}pnl-positive{% else %}pnl-negative{% endif %}">${{ '%.2f' % trade.swap }}</span>
+        {% else %}
+          <span style="color: #000;">$0.00</span>
+        {% endif %}
+      </div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Gewinn</div>
+      <div style="font-size: 1.15rem;">
+        {% if trade.pnl %}
+          <span class="{% if trade.pnl >= 0 %}pnl-positive{% else %}pnl-negative{% endif %}">${{ '%.2f' % trade.pnl }}</span>
+        {% else %}
+          <span style="color: #000;">$0.00</span>
+        {% endif %}
+      </div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Einstiegszeit</div><div style="color:#000; font-size: 1.15rem;">{{ trade.date.strftime('%Y.%m.%d %H:%M:%S') if trade.date else '' }}</div>
+      <div style="color:#000; font-weight:600; font-size: 1.2rem;">Ausstiegszeit</div><div style="color:#000; font-size: 1.15rem;">{{ trade.exit_date.strftime('%Y.%m.%d %H:%M:%S') if trade.exit_date else '' }}</div>
+    </div>
+    <!-- Editierbare Felder im Formular darunter -->
+    <form method="POST" action="{{ url_for('trade_detail', trade_id=trade.id) }}">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">Account Type</div>
+        <div>
+          <select name="account_type" style="width: 180px; padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid #eee; background: #fafafa; color: #000; font-weight: 500; font-size: 1.1rem; cursor: pointer;">
+            <option value="" {% if not trade.account_type %}selected{% endif %}>Not Set</option>
+            <option value="Live" {% if trade.account_type == 'Live' %}selected{% endif %}>Live Account</option>
+            <option value="Funded" {% if trade.account_type == 'Funded' %}selected{% endif %}>Funded Account</option>
+          </select>
+        </div>
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">Market Phase</div>
+        <div>
+          <button type="button" id="marketphase-btn" style="background: #ede9fe; color: #7c5cff; border-radius: 12px; padding: 0.3em 1em; font-weight: 600; font-size: 1.1rem; border: none; cursor: pointer;">{{ trade.market_phase if trade.market_phase else 'Market Phase wählen' }}</button>
+          <input type="hidden" name="market_phase" id="marketphase-input" value="{{ trade.market_phase if trade.market_phase else '' }}">
+          <div id="marketphase-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); align-items:center; justify-content:center; z-index:1000;">
+            <div style="background:#fff; border-radius:12px; padding:2rem; width:380px; max-width:90vw; position:relative; box-shadow:0 2px 16px rgba(0,0,0,0.13);">
+              <button id="close-marketphase-modal" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:1.3rem; color:#7c5cff; cursor:pointer;">&times;</button>
+              <h2 style="font-size:1.2rem; font-weight:600; margin-bottom:1.2rem; color:#7c5cff;">Market Phase auswählen</h2>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.8rem 1.5rem;">
+                {% set marketphase_options = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'] %}
+                {% for opt in marketphase_options %}
+                  <label style="display:flex; align-items:center; gap:0.8em; font-size:1.1rem; font-weight:500; cursor:pointer; color:#000;">
+                    <input type="radio" class="marketphase-radio" name="marketphase_radio" value="{{ opt }}" style="accent-color:#7c5cff; width:1.2em; height:1.2em;"> {{ opt }}
+                  </label>
+                {% endfor %}
+              </div>
+              <button id="save-marketphase-btn" style="margin-top:1.5rem; background:#7c5cff; color:#fff; border:none; border-radius:8px; padding:0.7rem 1.3rem; font-weight:500; font-size:1.1rem; transition:background 0.2s;">Speichern</button>
+            </div>
+          </div>
+        </div>
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">Mistakes</div>
+        <div>
+          <div id="mistakes-list" style="display:flex; flex-wrap:wrap; gap:0.7rem; margin-bottom:0.7rem;"></div>
+          <button id="add-mistake-btn" type="button" style="background:#fff3e0; color:#e6a259; border-radius:12px; padding:0.3em 1em; font-weight:600; font-size:1.1rem; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5em;">
+            <span style="font-size:1.3em;">+</span>
+          </button>
+          <div id="mistake-input-row" style="display:none; margin-top:0.7em; gap:0.5em; align-items:center;">
+            <input id="mistake-input" type="text" style="border-radius:6px; border:1px solid #eee; padding:0.3rem 0.8rem; font-size:1.1rem;" placeholder="Mistake hinzufügen..." />
+            <button id="save-mistake-btn" type="button" style="background:#e6a259; color:#fff; border:none; border-radius:6px; padding:0.4em 1.2em; font-weight:600; font-size:1rem;">OK</button>
+          </div>
+          <input type="hidden" name="mistakes" id="mistakes-input" value="{{ trade.mistakes|join(',') if trade.mistakes is defined and trade.mistakes else '' }}">
+        </div>
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">SL</div>
+        <div><input type="number" step="0.0001" name="sl" value="{{ trade.sl if trade.sl is defined else '' }}" style="color:#000; width: 140px; border-radius: 6px; border: 1px solid #eee; padding: 0.4rem 0.9rem; background: #fafafa; font-weight: 500; font-size: 1.1rem;" /></div>
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">Entry type</div>
+        <div>
+          <button type="button" id="entrytype-btn" style="background: #ede9fe; color: #7c5cff; border-radius: 12px; padding: 0.3em 1em; font-weight: 600; font-size: 1.1rem; border: none; cursor: pointer;">{{ trade.entry_type|join(', ') if trade.entry_type is defined and trade.entry_type else 'Entry type wählen' }}</button>
+          <input type="hidden" name="entry_type" id="entrytype-input" value="{{ trade.entry_type|join(',') if trade.entry_type is defined and trade.entry_type else '' }}">
+          <div id="entrytype-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); align-items:center; justify-content:center; z-index:1000;">
+            <div style="background:#fff; border-radius:12px; padding:2rem; width:340px; max-width:90vw; position:relative; box-shadow:0 2px 16px rgba(0,0,0,0.13);">
+              <button id="close-entrytype-modal" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:1.3rem; color:#7c5cff; cursor:pointer;">&times;</button>
+              <h2 style="font-size:1.2rem; font-weight:600; margin-bottom:1.2rem; color:#7c5cff;">Entry type auswählen</h2>
+              <div style="display:flex; flex-direction:column; gap:0.8rem;">
+                {% set entrytype_options = ['Fibonacci', 'MSS + S', 'MSS + D', 'FOMO'] %}
+                {% for opt in entrytype_options %}
+                  <label style="display:flex; align-items:center; gap:0.8em; font-size:1.1rem; font-weight:500; cursor:pointer; color:#000;">
+                    <input type="checkbox" class="entrytype-checkbox" value="{{ opt }}" style="accent-color:#7c5cff; width:1.2em; height:1.2em;"> {{ opt }}
+                  </label>
+                {% endfor %}
+              </div>
+              <button id="save-entrytype-btn" style="margin-top:1.5rem; background:#7c5cff; color:#fff; border:none; border-radius:8px; padding:0.7rem 1.3rem; font-weight:500; font-size:1.1rem; transition:background 0.2s;">Speichern</button>
+            </div>
+          </div>
+        </div>
+        <div style="color:#000; font-weight:600; font-size: 1.2rem;">Trade Rating</div>
+        <div>
+          <div id="star-rating" style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 10px 0;">
+            {% set rating = (trade.trade_rating if trade.trade_rating is not none else 0) %}
+            <input type="hidden" name="trade_rating" id="trade_rating_input" value="{{ rating }}">
+            {% for i in range(1, 6) %}
+              <span class="star" data-value="{{ i }}" style="font-size: 2rem; color: #ddd; cursor: pointer; transition: all 0.2s ease; position: relative; display: inline-block; width: 30px; height: 30px;">
+                <svg width="30" height="30" viewBox="0 0 24 24" style="position: absolute; top: 0; left: 0;">
+                  <defs>
+                    <linearGradient id="half-gradient-{{ i }}" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="50%" stop-color="#fbc02d"/>
+                      <stop offset="50%" stop-color="#ddd"/>
+                    </linearGradient>
+                  </defs>
+                  <polygon points="12,2 15,9 22,9.3 17,14.1 18.5,21 12,17.5 5.5,21 7,14.1 2,9.3 9,9" 
+                           fill="{% if rating >= i %}#fbc02d{% elif rating >= i - 0.5 %}url(#half-gradient-{{ i }}){% else %}#ddd{% endif %}" 
+                           stroke="#ddd" 
+                           stroke-width="0.5"/>
+                </svg>
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <!-- Die 6 Textfelder unterhalb -->
+      <div style="margin-top: 3rem; width: 100%;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+          <div>
+            <label style="font-size: 1.15rem; color: #e57373; font-weight: 500; display: block; margin-bottom: 0.5rem;">Analysis</label>
+            <textarea class="auto-grow" name="analysis" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.analysis if trade.analysis is not none and trade.analysis else '' }}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 1.15rem; color: #43a047; font-weight: 500; display: block; margin-bottom: 0.5rem;">Entry</label>
+            <textarea class="auto-grow" name="entry_comment" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.entry_comment if trade.entry_comment is not none and trade.entry_comment else '' }}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 1.15rem; color: #d81b60; font-weight: 500; display: block; margin-bottom: 0.5rem;">Risk-Management</label>
+            <textarea class="auto-grow" name="risk_management" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.risk_management if trade.risk_management is not none and trade.risk_management else '' }}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 1.15rem; color: #9c2d2d; font-weight: 500; display: block; margin-bottom: 0.5rem;">Psychological Factors</label>
+            <textarea class="auto-grow" name="psychological_factors" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.psychological_factors if trade.psychological_factors is not none and trade.psychological_factors else '' }}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 1.15rem; color: #825353; font-weight: 500; display: block; margin-bottom: 0.5rem;">What did you based your BIAS on?</label>
+            <textarea class="auto-grow" name="bias_basis" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.bias_basis if trade.bias_basis is not none and trade.bias_basis else '' }}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 1.15rem; color: #a56a6a; font-weight: 500; display: block; margin-bottom: 0.5rem;">What went well/bad</label>
+            <textarea class="auto-grow" name="what_went_well_bad" rows="1" placeholder="" style="width: 100%; min-height: 38px; resize: none; border-radius: 8px; border: 1px solid #333; background: #2d2f34; color: #fff; padding: 0.7rem 1rem; font-size: 1.08rem;">{{ trade.what_went_well_bad if trade.what_went_well_bad is not none and trade.what_went_well_bad else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:2rem; text-align:center;">
+        <button type="submit" style="background: #7c5cff; color: #fff; border: none; border-radius: 8px; padding: 0.8rem 2rem; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: background 0.2s;">Speichern</button>
+      </div>
+    </form>
+  </div>
+  <!-- Rechte Spalte: Bilder-Upload und Galerie (unverändert) -->
+  <div style="flex: 1 1 0; min-width: 0; min-height: 500px; display: flex; align-items: flex-start; justify-content: flex-start; background: #fafbfc; border-radius: 18px; padding: 2.5rem 2.2rem; margin-left: 0; max-width: 600px;">
+    <div style="width: 100%;">
+      {% set max_images = 20 %}
+      {% if trade.images and trade.images|length > 0 %}
+      <div id="image-list-container" style="display: flex; flex-direction: column; gap: 1.2rem; max-width: 100%; max-height: 1250px; overflow-y: auto;">
+        {% for img in trade.images %}
+        <div class="image-container" style="position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0; margin: 0; padding: 0;">
+          <div style="position: relative; width: 100%; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0;">
+            <img src="{{ url_for('static', filename=img) }}" alt="Screenshot" class="clickable-image" style="display: block; max-width: 100%; max-height: 400px; width: auto; height: auto; border-radius: 12px; background: #222; margin: 0; padding: 0; cursor: pointer;" onclick="openLightbox(this.src)" />
+            <form method="post" action="{{ url_for('delete_image', trade_id=trade.id) }}" style="position: absolute; top: 10px; right: 10px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); border-radius: 50%; padding: 8px; transition: background-color 0.2s;" class="delete-image-form">
+              <input type="hidden" name="image" value="{{ img }}" />
+              <button type="submit" class="delete-image-btn" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Upload-Formular nach den Bildern, wenn unter dem Limit -->
+        {% if trade.images|length < max_images %}
+        <form action="{{ url_for('upload_image', trade_id=trade.id) }}" method="post" enctype="multipart/form-data" id="additional-image-upload-form" style="margin-bottom: 1.5rem;">
+          <div id="additional-image-upload-area" tabindex="0" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; background: #232323; color: #bbb; border-radius: 12px; font-size: 1.15rem; font-weight: 500; border: 2.5px dashed #444; margin-bottom: 1.5rem; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; min-height: 180px; max-width: 420px; margin-left: auto; margin-right: auto; outline: none; position: relative; padding: 0; overflow: hidden;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span>Add more images<br><span style='font-size:0.95em;color:#7c5cff;'>CTRL+V only</span></span>
+            <span id="additional-paste-hint" style="display:none; color:#7c5cff; font-size:1rem; font-weight:600;">Press <b>CTRL+V</b> to paste screenshot</span>
+            <input id="additional-image-upload-input" type="file" name="images" accept="image/*" multiple style="display: none;" />
+          </div>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <!-- Keine Bilder vorhanden - Erstes Upload-Formular -->
+      <form action="{{ url_for('upload_image', trade_id=trade.id) }}" method="post" enctype="multipart/form-data" id="image-upload-form" style="margin-bottom: 1.5rem;">
+        <div id="image-upload-area" tabindex="0" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; background: #232323; color: #bbb; border-radius: 12px; font-size: 1.15rem; font-weight: 500; border: 2.5px dashed #444; margin-bottom: 1.5rem; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; min-height: 180px; max-width: 420px; margin-left: auto; margin-right: auto; outline: none; position: relative; padding: 0; overflow: hidden;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span>Add images or screenshots<br><span style='font-size:0.95em;color:#7c5cff;'>CTRL+V only</span></span>
+          <span id="paste-hint" style="display:none; color:#7c5cff; font-size:1rem; font-weight:600;">Press <b>CTRL+V</b> to paste screenshot</span>
+          <input id="image-upload-input" type="file" name="images" accept="image/*" multiple style="display: none;" />
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 2000; align-items: center; justify-content: center;">
+  <button onclick="closeLightbox()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: white; font-size: 2rem; cursor: pointer;">&times;</button>
+  <button id="prev-button" onclick="navigateImage(-1)" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 2rem; cursor: pointer; padding: 1rem; border-radius: 50%; display: none;">&#10094;</button>
+  <button id="next-button" onclick="navigateImage(1)" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 2rem; cursor: pointer; padding: 1rem; border-radius: 50%; display: none;">&#10095;</button>
+  <img id="lightbox-image" src="" alt="Enlarged image" style="max-width: 90vw; max-height: 90vh; object-fit: contain;">
+</div>
+
+<script>
+// Auto-resizing Textareas
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = (el.scrollHeight) + 'px';
+}
+document.querySelectorAll('.auto-grow').forEach(t => {
+  t.addEventListener('input', function() { autoGrow(this); });
+});
+
+// Plus-Button-Upload: Öffnet das versteckte Input beim Klick auf die Fläche
+function setupPlusUploadAreas() {
+  document.querySelectorAll('.plus-upload-area').forEach(function(area) {
+    area.addEventListener('click', function(e) {
+      const input = area.querySelector('input[type="file"]');
+      if (input) input.click();
+    });
+  });
+}
+setupPlusUploadAreas();
+
+// Upload-Funktionalität für beide Upload-Bereiche
+function setupUploadArea(areaId, inputId, hintId, formId) {
+  const uploadArea = document.getElementById(areaId);
+  const uploadInput = document.getElementById(inputId);
+  const pasteHint = document.getElementById(hintId);
+  const form = document.getElementById(formId);
+  
+  console.log(`Setting up upload area: ${areaId}`, {
+    uploadArea: !!uploadArea,
+    uploadInput: !!uploadInput,
+    form: !!form
+  });
+  
+  if (!uploadArea || !uploadInput || !form) {
+    console.error(`Upload area setup failed for ${areaId}`);
+    return;
+  }
+  
+  let areaActive = false;
+  
+  uploadArea.addEventListener('focus', function() {
+    console.log(`Upload area ${areaId} focused`);
+    areaActive = true;
+    uploadArea.style.borderColor = '#7c5cff';
+    uploadArea.style.boxShadow = '0 0 0 3px #ede9fe';
+    if (pasteHint) pasteHint.style.display = 'block';
+  });
+  
+  uploadArea.addEventListener('blur', function() {
+    console.log(`Upload area ${areaId} blurred`);
+    areaActive = false;
+    uploadArea.style.borderColor = '#444';
+    uploadArea.style.boxShadow = 'none';
+    if (pasteHint) pasteHint.style.display = 'none';
+  });
+  
+  uploadArea.addEventListener('paste', function(e) {
+    console.log(`Paste event on ${areaId}:`, e);
+    console.log('ClipboardData:', e.clipboardData);
+    console.log('Files from clipboard:', e.clipboardData?.files);
+    
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      console.log(`Found ${e.clipboardData.files.length} files in clipboard`);
+      const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+      console.log(`Filtered ${files.length} image files:`, files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+      
+      if (files.length > 0) {
+        const dt = new DataTransfer();
+        files.forEach(f => dt.items.add(f));
+        uploadInput.files = dt.files;
+        console.log(`Set input files:`, uploadInput.files);
+        console.log(`Submitting form ${formId}`);
+        form.submit();
+      } else {
+        console.log('No image files found in clipboard');
+      }
+    } else {
+      console.log('No files found in clipboard data');
+    }
+  });
+}
+
+// Setup für beide Upload-Bereiche
+setupUploadArea('image-upload-area', 'image-upload-input', 'paste-hint', 'image-upload-form');
+setupUploadArea('additional-image-upload-area', 'additional-image-upload-input', 'additional-paste-hint', 'additional-image-upload-form');
+
+// Delete-Button-Funktionalität
+document.querySelectorAll('.delete-image-btn').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    const form = btn.closest('form');
+    if (form) form.submit();
+  });
+});
+
+// Interactive Star Rating with Hover Effects
+(function() {
+  const starContainer = document.getElementById('star-rating');
+  if (!starContainer) return;
+  
+  const stars = starContainer.querySelectorAll('.star');
+  const input = document.getElementById('trade_rating_input');
+  let currentRating = parseFloat(input.value) || 0;
+  let hoverRating = 0;
+  let isHovering = false;
+
+  function updateStars(rating) {
+    stars.forEach((star, idx) => {
+      const starValue = parseInt(star.getAttribute('data-value'));
+      const polygon = star.querySelector('svg polygon');
+      
+      if (rating >= starValue) {
+        // Full star
+        polygon.setAttribute('fill', '#fbc02d');
+        star.style.transform = isHovering ? 'scale(1.1)' : 'scale(1)';
+        star.classList.add('active');
+      } else if (rating >= starValue - 0.5) {
+        // Half star
+        polygon.setAttribute('fill', `url(#half-gradient-${starValue})`);
+        star.style.transform = isHovering ? 'scale(1.1)' : 'scale(1)';
+        star.classList.add('active');
+      } else {
+        // Empty star
+        polygon.setAttribute('fill', '#ddd');
+        star.style.transform = 'scale(1)';
+        star.classList.remove('active');
+      }
+    });
+  }
+
+  stars.forEach((star, idx) => {
+    const starValue = parseInt(star.getAttribute('data-value'));
+    
+    // Hover effects
+    star.addEventListener('mouseenter', function() {
+      isHovering = true;
+      star.style.transform = 'scale(1.1)';
+    });
+    
+    star.addEventListener('mouseleave', function() {
+      isHovering = false;
+      updateStars(currentRating);
+    });
+    
+    star.addEventListener('mousemove', function(e) {
+      const rect = star.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const isLeftHalf = x < rect.width / 2;
+      
+      // Calculate hover rating based on position
+      hoverRating = isLeftHalf ? starValue - 0.5 : starValue;
+      
+      // Update all stars up to and including this one for hover effect
+      stars.forEach((s, i) => {
+        const sValue = parseInt(s.getAttribute('data-value'));
+        const polygon = s.querySelector('svg polygon');
+        
+        if (hoverRating >= sValue) {
+          polygon.setAttribute('fill', '#fbc02d');
+          s.style.transform = 'scale(1.1)';
+          s.classList.add('active');
+        } else if (hoverRating >= sValue - 0.5) {
+          polygon.setAttribute('fill', `url(#half-gradient-${sValue})`);
+          s.style.transform = 'scale(1.1)';
+          s.classList.add('active');
+        } else {
+          polygon.setAttribute('fill', '#ddd');
+          s.style.transform = 'scale(1)';
+          s.classList.remove('active');
+        }
+      });
+    });
+    
+    // Click to set rating
+    star.addEventListener('click', function(e) {
+      const rect = star.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const isLeftHalf = x < rect.width / 2;
+      
+      currentRating = isLeftHalf ? starValue - 0.5 : starValue;
+      input.value = currentRating;
+      updateStars(currentRating);
+      
+      // Visual feedback
+      star.style.transform = 'scale(1.2)';
+      setTimeout(() => {
+        star.style.transform = 'scale(1)';
+      }, 150);
+    });
+  });
+
+  // Mouse leave container
+  starContainer.addEventListener('mouseleave', function() {
+    isHovering = false;
+    updateStars(currentRating);
+  });
+
+  // Initial display
+  updateStars(currentRating);
+})();
+
+// Mistakes-Funktionalität
+(function() {
+  console.log('Mistakes JavaScript wird geladen...');
+  
+  const addBtn = document.getElementById('add-mistake-btn');
+  const inputRow = document.getElementById('mistake-input-row');
+  const mistakeInput = document.getElementById('mistake-input');
+  const saveBtn = document.getElementById('save-mistake-btn');
+  const mistakesList = document.getElementById('mistakes-list');
+  const hiddenInput = document.getElementById('mistakes-input');
+  
+  console.log('Mistakes Elemente:', {
+    addBtn: !!addBtn,
+    inputRow: !!inputRow,
+    mistakeInput: !!mistakeInput,
+    saveBtn: !!saveBtn,
+    mistakesList: !!mistakesList,
+    hiddenInput: !!hiddenInput
+  });
+  
+  if (!addBtn || !inputRow || !mistakeInput || !saveBtn || !mistakesList || !hiddenInput) {
+    console.error('Mistakes: Ein oder mehrere Elemente wurden nicht gefunden!');
+    return;
+  }
+  
+  // Lade existierende Mistakes beim Seitenaufbau
+  function loadExistingMistakes() {
+    const mistakesValue = hiddenInput.value;
+    console.log('Lade existierende Mistakes:', mistakesValue);
+    if (mistakesValue) {
+      const mistakes = mistakesValue.split(',').map(m => m.trim()).filter(Boolean);
+      mistakes.forEach(mistake => addMistakeToList(mistake));
+    }
+  }
+  
+  // Füge Mistake zur Liste hinzu
+  function addMistakeToList(mistakeText) {
+    console.log('Füge Mistake hinzu:', mistakeText);
+    const mistakeTag = document.createElement('div');
+    mistakeTag.style.cssText = 'background:#fff3e0; color:#e6a259; border-radius:12px; padding:0.2em 0.7em; font-weight:600; font-size:0.95rem; display:flex; align-items:center; gap:0.5em;';
+    mistakeTag.innerHTML = `
+      <span>${mistakeText}</span>
+      <button type="button" style="background:none; border:none; color:#e6a259; cursor:pointer; font-size:1.1em; line-height:1; padding:0; margin:0;">&times;</button>
+    `;
+    
+    // Lösche-Button Funktionalität
+    mistakeTag.querySelector('button').addEventListener('click', function() {
+      console.log('Lösche Mistake:', mistakeText);
+      mistakeTag.remove();
+      updateHiddenInput();
+    });
+    
+    mistakesList.appendChild(mistakeTag);
+    updateHiddenInput();
+  }
+  
+  // Update das versteckte Input-Feld
+  function updateHiddenInput() {
+    const mistakes = Array.from(mistakesList.querySelectorAll('span')).map(span => span.textContent);
+    hiddenInput.value = mistakes.join(',');
+    console.log('Hidden input aktualisiert:', hiddenInput.value);
+  }
+  
+  // Event Listeners
+  addBtn.addEventListener('click', function() {
+    console.log('Add Mistake Button geklickt');
+    inputRow.style.display = 'flex';
+    mistakeInput.focus();
+  });
+  
+  saveBtn.addEventListener('click', function() {
+    console.log('Save Mistake Button geklickt');
+    const mistake = mistakeInput.value.trim();
+    if (mistake) {
+      addMistakeToList(mistake);
+      mistakeInput.value = '';
+      inputRow.style.display = 'none';
+    }
+  });
+  
+  mistakeInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      console.log('Enter gedrückt in Mistake Input');
+      saveBtn.click();
+    }
+  });
+  
+  // Lade existierende Mistakes beim Start
+  loadExistingMistakes();
+  console.log('Mistakes JavaScript geladen!');
+})();
+
+// Entry type Modal-Logik (korrigiert)
+(function() {
+  console.log('Entry type JavaScript wird geladen...');
+  
+  const btn = document.getElementById('entrytype-btn');
+  const modal = document.getElementById('entrytype-modal');
+  const closeBtn = document.getElementById('close-entrytype-modal');
+  const saveBtn = document.getElementById('save-entrytype-btn');
+  const input = document.getElementById('entrytype-input');
+  
+  console.log('Entry type Elemente:', {
+    btn: !!btn,
+    modal: !!modal,
+    closeBtn: !!closeBtn,
+    saveBtn: !!saveBtn,
+    input: !!input
+  });
+  
+  if (!btn || !modal || !closeBtn || !saveBtn || !input) {
+    console.error('Entry type: Ein oder mehrere Elemente wurden nicht gefunden!');
+    return;
+  }
+  
+  const checkboxes = () => modal.querySelectorAll('.entrytype-checkbox');
+  
+  btn.addEventListener('click', () => {
+    console.log('Entry type Button geklickt');
+    // Vorbelegen
+    const selected = (input.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    checkboxes().forEach(cb => { cb.checked = selected.includes(cb.value); });
+    modal.style.display = 'flex';
+  });
+  
+  closeBtn.addEventListener('click', () => {
+    console.log('Entry type Modal schließen geklickt');
+    modal.style.display = 'none';
+  });
+  
+  saveBtn.addEventListener('click', () => {
+    console.log('Entry type Speichern geklickt');
+    const selected = Array.from(checkboxes()).filter(cb => cb.checked).map(cb => cb.value);
+    input.value = selected.join(',');
+    btn.textContent = selected.length ? selected.join(', ') : 'Entry type wählen';
+    modal.style.display = 'none';
+    console.log('Entry type gespeichert:', selected);
+    
+    // Signal für Live-Update der Charts senden
+    localStorage.setItem('entryTypeChanged', 'true');
+    // Event für das aktuelle Fenster senden
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'entryTypeChanged',
+      newValue: 'true'
+    }));
+  });
+  
+  // Modal schließen bei Klick außerhalb
+  modal.addEventListener('mousedown', function(e) {
+    if (e.target === modal) {
+      console.log('Entry type Modal außerhalb geklickt');
+      modal.style.display = 'none';
+    }
+  });
+  
+  console.log('Entry type JavaScript geladen!');
+})();
+
+// Lightbox functionality
+let currentImageIndex = -1;
+let allImages = [];
+
+function openLightbox(imageSrc) {
+  const modal = document.getElementById('lightbox-modal');
+  const modalImg = document.getElementById('lightbox-image');
+  
+  // Get all images and find current index
+  allImages = Array.from(document.querySelectorAll('.clickable-image')).map(img => img.src);
+  currentImageIndex = allImages.indexOf(imageSrc);
+  
+  modal.style.display = 'flex';
+  modalImg.src = imageSrc;
+  document.body.style.overflow = 'hidden';
+  
+  // Show/hide navigation buttons
+  updateNavigationButtons();
+}
+
+function updateNavigationButtons() {
+  const prevButton = document.getElementById('prev-button');
+  const nextButton = document.getElementById('next-button');
+  
+  prevButton.style.display = currentImageIndex > 0 ? 'block' : 'none';
+  nextButton.style.display = currentImageIndex < allImages.length - 1 ? 'block' : 'none';
+}
+
+function navigateImage(direction) {
+  currentImageIndex += direction;
+  const modalImg = document.getElementById('lightbox-image');
+  modalImg.src = allImages[currentImageIndex];
+  updateNavigationButtons();
+}
+
+function closeLightbox() {
+  const modal = document.getElementById('lightbox-modal');
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+  currentImageIndex = -1;
+  allImages = [];
+}
+
+// Close lightbox when clicking outside the image
+document.getElementById('lightbox-modal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeLightbox();
+  }
+});
+
+// Close lightbox with Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeLightbox();
+  } else if (e.key === 'ArrowLeft' && currentImageIndex > 0) {
+    navigateImage(-1);
+  } else if (e.key === 'ArrowRight' && currentImageIndex < allImages.length - 1) {
+    navigateImage(1);
+  }
+});
+
+// Market Phase Modal-Logik
+(function() {
+  console.log('Market Phase JavaScript wird geladen...');
+  
+  const btn = document.getElementById('marketphase-btn');
+  const modal = document.getElementById('marketphase-modal');
+  const closeBtn = document.getElementById('close-marketphase-modal');
+  const saveBtn = document.getElementById('save-marketphase-btn');
+  const input = document.getElementById('marketphase-input');
+  
+  console.log('Market Phase Elemente:', {
+    btn: !!btn,
+    modal: !!modal,
+    closeBtn: !!closeBtn,
+    saveBtn: !!saveBtn,
+    input: !!input
+  });
+  
+  if (!btn || !modal || !closeBtn || !saveBtn || !input) {
+    console.error('Market Phase: Ein oder mehrere Elemente wurden nicht gefunden!');
+    return;
+  }
+  
+  const radioButtons = () => modal.querySelectorAll('.marketphase-radio');
+  
+  btn.addEventListener('click', () => {
+    console.log('Market Phase Button geklickt');
+    // Vorbelegen
+    const selected = input.value || '';
+    radioButtons().forEach(rb => { rb.checked = rb.value === selected; });
+    modal.style.display = 'flex';
+  });
+  
+  closeBtn.addEventListener('click', () => {
+    console.log('Market Phase Modal schließen geklickt');
+    modal.style.display = 'none';
+  });
+  
+  saveBtn.addEventListener('click', () => {
+    console.log('Market Phase Speichern geklickt');
+    const selected = Array.from(radioButtons()).find(rb => rb.checked);
+    const selectedValue = selected ? selected.value : '';
+    input.value = selectedValue;
+    btn.textContent = selectedValue || 'Market Phase wählen';
+    modal.style.display = 'none';
+    console.log('Market Phase gespeichert:', selectedValue);
+  });
+  
+  // Modal schließen bei Klick außerhalb
+  modal.addEventListener('mousedown', function(e) {
+    if (e.target === modal) {
+      console.log('Market Phase Modal außerhalb geklickt');
+      modal.style.display = 'none';
+    }
+  });
+  
+  console.log('Market Phase JavaScript geladen!');
+})();
+</script>
+{% endif %}
+{% endblock %} 
+

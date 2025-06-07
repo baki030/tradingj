@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 2rem auto; padding: 0 1rem;">
+  <div class="card-white">
+    <h1 style="font-size: 1.8rem; font-weight: 600; margin-bottom: 2rem; color: #222;">Account Settings</h1>
+    
+    <!-- Change Username Form -->
+    <div style="margin-bottom: 2rem;">
+      <h2 style="font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem; color: #444;">Change Username</h2>
+      <div style="margin-bottom: 0.5rem;">
+        <span style="font-size: 0.9rem; color: #666;">
+          Aktueller Benutzername: {{ current_username if current_username else 'Kein Benutzername gesetzt' }}
+        </span>
+      </div>
+      <form action="{{ url_for('change_username') }}" method="POST" style="display: flex; gap: 1rem;">
+        <input type="text" name="new_username" placeholder="New username" required class="form-input" style="flex: 1;">
+        <button type="submit" class="btn-settings">Update</button>
+      </form>
+    </div>
+
+    <!-- Change Email Form -->
+    <div style="margin-bottom: 2rem;">
+      <h2 style="font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem; color: #444;">E-Mail-Adresse ändern</h2>
+      <div style="margin-bottom: 0.5rem;">
+        <span style="font-size: 0.9rem; color: #666;">
+          Aktuelle E-Mail: {{ current_user.email if current_user.email else 'Keine E-Mail-Adresse gesetzt' }}
+        </span>
+      </div>
+      <form action="{{ url_for('change_email') }}" method="POST" style="display: flex; gap: 1rem;">
+        <input type="email" name="new_email" placeholder="Neue E-Mail-Adresse" required class="form-input" style="flex: 1;">
+        <button type="submit" class="btn-settings">Update</button>
+      </form>
+    </div>
+
+    <!-- Change Password Form -->
+    <div style="margin-bottom: 2rem;">
+      <h2 style="font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem; color: #444;">Change Password</h2>
+      <form action="{{ url_for('change_password') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="position: relative;">
+          <input type="password" name="current_password" id="current_password" placeholder="Current password" required class="form-input">
+          <button type="button" class="toggle-password" data-target="current_password"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div style="position: relative;">
+          <input type="password" name="new_password" id="new_password" placeholder="New password" required class="form-input">
+          <button type="button" class="toggle-password" data-target="new_password"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div style="position: relative;">
+          <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required class="form-input">
+          <button type="button" class="toggle-password" data-target="confirm_password"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <button type="submit" class="btn-settings" style="align-self: flex-start;">Update</button>
+      </form>
+    </div>
+
+    <!-- Delete Account Section -->
+    <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #eee;">
+      <h2 style="font-size: 1.2rem; font-weight: 500; margin-bottom: 1rem; color: #e74c3c;">Delete Account</h2>
+      <p style="color: #666; margin-bottom: 1rem;">Once you delete your account, there is no going back. Please be certain.</p>
+      <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete your account? This action cannot be undone.');">
+        <button type="submit" class="btn-danger">Delete Account</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Success Message -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      {% if category == 'success' %}
+        <div id="success-message" class="success-message">
+          {{ message }}
+        </div>
+        <script>
+          setTimeout(function() {
+            var successMessage = document.getElementById('success-message');
+            if (successMessage) {
+              successMessage.style.opacity = '0';
+              successMessage.style.transition = 'opacity 0.5s ease';
+              setTimeout(function() {
+                successMessage.remove();
+              }, 500);
+            }
+          }, 2000);
+        </script>
+      {% elif category == 'error' %}
+        <div id="error-message" class="error-message">
+          {{ message }}
+        </div>
+        <script>
+          setTimeout(function() {
+            var errorMessage = document.getElementById('error-message');
+            if (errorMessage) {
+              errorMessage.style.opacity = '0';
+              errorMessage.style.transition = 'opacity 0.5s ease';
+              setTimeout(function() {
+                errorMessage.remove();
+              }, 500);
+            }
+          }, 3000);
+        </script>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleButtons = document.querySelectorAll('.toggle-password');
+  
+  toggleButtons.forEach(button => {
+    let hideTimeout = null;
+    button.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const passwordInput = document.getElementById(targetId);
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      
+      // Toggle eye icon
+      const svg = this.querySelector('svg');
+      if (type === 'text') {
+        svg.innerHTML = `
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+        `;
+        // Set timeout to hide password after 3 seconds
+        if (hideTimeout) clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(() => {
+          passwordInput.setAttribute('type', 'password');
+          svg.innerHTML = `
+            <path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"></path>
+            <circle cx=\"12\" cy=\"12\" r=\"3\"></circle>
+          `;
+        }, 3000);
+      } else {
+        svg.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        `;
+        if (hideTimeout) clearTimeout(hideTimeout);
+      }
+    });
+  });
+});
+</script>
+{% endblock %} 

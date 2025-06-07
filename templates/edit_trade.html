@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Trade bearbeiten{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 600px; margin-top: 2rem;">
+  <h2>Trade bearbeiten</h2>
+  <form method="POST">
+    <div class="mb-3">
+      <label for="symbol" class="form-label">Symbol</label>
+      <input type="text" class="form-control" id="symbol" name="symbol" value="{{ trade.symbol }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="entry_price" class="form-label">Entry-Preis</label>
+      <input type="number" step="0.0001" class="form-control" id="entry_price" name="entry_price" value="{{ trade.entry_price }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="exit_price" class="form-label">Exit-Preis</label>
+      <input type="number" step="0.0001" class="form-control" id="exit_price" name="exit_price" value="{{ trade.exit_price }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="position_size" class="form-label">Positionsgröße</label>
+      <input type="number" step="0.0001" class="form-control" id="position_size" name="position_size" value="{{ trade.position_size }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="direction" class="form-label">Typ</label>
+      <input type="text" class="form-control" id="direction" name="direction" value="{{ trade.direction }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="pnl" class="form-label">Gewinn/Verlust</label>
+      <input type="number" step="0.01" class="form-control" id="pnl" name="pnl" value="{{ trade.pnl }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="date" class="form-label">Datum & Zeit</label>
+      <input type="datetime-local" class="form-control" id="date" name="date" value="{{ trade.date.strftime('%Y-%m-%dT%H:%M') }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="notes" class="form-label">Kommentar</label>
+      <textarea class="form-control" id="notes" name="notes">{{ trade.notes }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Speichern</button>
+    <a href="{{ url_for('journal_hub') }}" class="btn btn-secondary">Abbrechen</a>
+  </form>
+</div>
+{% endblock %} 

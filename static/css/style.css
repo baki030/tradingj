@@ -1,0 +1,944 @@
+/* Reset und Basis-Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #E0E0E0;
+    display: flex;
+    min-height: 100vh;
+    background: #fff;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+/* Common Button Styles */
+.btn-primary {
+    background: #7c5cff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.3rem;
+    font-weight: 600;
+    font-size: 1.08rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: #6b46c1;
+}
+
+.btn-secondary {
+    background: #f4f4f4;
+    color: #7c5cff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.3rem;
+    font-weight: 600;
+    font-size: 1.08rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #ede9fe;
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 1.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-settings {
+    background: #7c5cff;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-settings:hover {
+    background: #6b46c1;
+}
+
+/* Common Card Styles */
+.card-white {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-primary {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 1.2rem;
+    position: relative;
+    text-align: center;
+    flex: 1 1 250px;
+    min-width: 250px;
+}
+
+/* Common Form Styles */
+.form-input {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    width: 100%;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    border-color: #7c5cff;
+    outline: none;
+}
+
+/* Common Modal Styles */
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    color: #7c5cff;
+    cursor: pointer;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+/* Common Filter Styles */
+.filter-chip {
+    display: flex;
+    align-items: center;
+    background: #ede9fe;
+    color: #7c5cff;
+    border-radius: 12px;
+    padding: 0.12rem 0.7rem;
+    margin-right: 0.2rem;
+    font-size: 0.97rem;
+    height: 28px;
+}
+
+/* Common Navigation Styles */
+.nav-btn {
+    background: #ede9fe;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4rem 1rem;
+    font-size: 1.3rem;
+    color: #7c5cff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-btn:hover {
+    background: rgba(124, 92, 255, 0.1);
+    color: #5a3cc7;
+}
+
+/* Message Styles */
+.success-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #27ae60;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.error-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #e74c3c;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+/* Utility Classes */
+.text-center {
+    text-align: center;
+}
+
+.text-primary {
+    color: #7c5cff;
+}
+
+.bg-primary {
+    background: #7c5cff;
+}
+
+.bg-light {
+    background: #f4f4f4;
+}
+
+.rounded {
+    border-radius: 8px;
+}
+
+.rounded-lg {
+    border-radius: 12px;
+}
+
+.shadow {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.mb-1 {
+    margin-bottom: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 1.5rem;
+}
+
+.p-1 {
+    padding: 1rem;
+}
+
+.p-2 {
+    padding: 1.5rem;
+}
+
+.flex {
+    display: flex;
+}
+
+.gap-1 {
+    gap: 1rem;
+}
+
+/* Navigation */
+nav {
+    background-color: #2A2A2A;
+    padding: 2rem 1rem;
+    width: 200px;
+    min-height: 100vh;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+nav a {
+    color: #E0E0E0;
+    text-decoration: none;
+    font-weight: bold;
+    display: block;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+nav a:hover {
+    background-color: #3A3A3A;
+    color: #FFFFFF;
+}
+
+/* Add Trade Button */
+.add-trade-btn {
+    background-color: #4CAF50;
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 0.8rem !important;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.add-trade-btn:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Main Content */
+main {
+    flex: 1;
+    padding: 2rem;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: transparent;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.05);
+    padding: 2.5rem 2rem;
+    margin: 2rem auto;
+    max-width: 800px;
+}
+
+/* Features */
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.feature {
+    background-color: #2A2A2A;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    color: #E0E0E0;
+}
+
+/* Dashboard */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    background-color: #2A2A2A;
+    padding: 2rem;
+    border-radius: 8px;
+    color: #E0E0E0;
+}
+
+/* Upload Form */
+.upload-form {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #2A2A2A;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    color: #E0E0E0;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: #E0E0E0;
+}
+
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px dashed #4CAF50;
+    border-radius: 4px;
+    background-color: #1A1A1A;
+    color: #E0E0E0;
+}
+
+/* Buttons */
+.button {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background-color: #4CAF50;
+    color: #FFFFFF;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #45a049;
+}
+
+/* KPI Cards */
+.kpi-card {
+    flex: 1;
+    background: #232838;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 1.5rem;
+    color: #E0E0E0;
+}
+
+.kpi-label {
+    color: #B0B0B0;
+    font-size: 1rem;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #E0E0E0;
+}
+
+.kpi-value.profit {
+    color: #4CAF50;
+}
+
+.kpi-value.loss {
+    color: #F44336;
+}
+
+/* Progress Bars */
+.progress-bar-bg {
+    background: #1A1A1A;
+    border-radius: 4px;
+    height: 8px;
+    margin-top: 0.5rem;
+}
+
+.progress-bar-fill {
+    background: #4CAF50;
+    border-radius: 4px;
+    height: 100%;
+}
+
+/* Table Styles */
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+    color: #E0E0E0;
+}
+
+.table th, .table td {
+    background: #2A2A2A;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: left;
+}
+
+.table th {
+    font-weight: 700;
+    background: #1A1A1A;
+    color: #E0E0E0;
+}
+
+.positive, .pl-positive {
+    color: #4CAF50 !important;
+    font-weight: bold;
+}
+
+.negative, .pl-negative {
+    color: #F44336 !important;
+    font-weight: bold;
+}
+
+/* Input Fields */
+input, select, textarea {
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
+    background: #f7f7fb;
+    color: #222;
+    transition: border 0.2s, background 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+input:focus, select:focus, textarea:focus {
+    border: 1.5px solid #7c5cff;
+    outline: none;
+    background: #f4f4f4;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    background: #1A1A1A;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3A3A3A;
+    border-radius: 8px;
+}
+
+/* Card Styles */
+.card {
+    background: #2A2A2A;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.7);
+    padding: 1.5rem 1.2rem;
+    margin-bottom: 1.5rem;
+    color: #E0E0E0;
+}
+
+/* Headings */
+h1, h2, h3 {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 1rem;
+    color: #E0E0E0;
+}
+
+/* Links */
+a {
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #45a049;
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+    
+    nav {
+        width: 100%;
+        min-height: auto;
+        padding: 1rem;
+    }
+    
+    nav ul {
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .container {
+        padding: 1rem;
+    }
+}
+
+/* Dashboard Styles */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #fff;
+}
+
+/* Filter Form */
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: center;
+}
+
+.filter-item {
+    background: #232838;
+    border-radius: 8px;
+    padding: 0.5rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #E0E0E0;
+}
+
+.filter-icon {
+    color: #4CAF50;
+    font-size: 1.2rem;
+}
+
+.account-select {
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    outline: none;
+    color: #E0E0E0;
+}
+
+/* KPI Cards */
+.kpi-cards {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.win-loss-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.win-stat {
+    color: #4CAF50;
+}
+
+.loss-stat {
+    color: #F44336;
+}
+
+/* Charts */
+.charts-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background: #232838;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 1.5rem;
+    color: #E0E0E0;
+}
+
+.radar-chart {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.cumulative-chart, .daily-chart {
+    flex: 2;
+}
+
+.chart-placeholder {
+    width: 100%;
+    height: 180px;
+    background: #1a1e2c;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #B0B0B0;
+}
+
+.gradient-green {
+    background: linear-gradient(180deg, #4CAF50 0%, #1A1A1A 100%);
+}
+
+.gradient-blue {
+    background: linear-gradient(180deg, #2196F3 0%, #1A1A1A 100%);
+}
+
+.chart-title {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #E0E0E0;
+}
+
+.zella-score {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+/* Trades and Calendar */
+.trades-calendar-row {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.trades-card {
+    flex: 1.5;
+    background: #232838;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 1.5rem;
+    color: #E0E0E0;
+}
+
+.calendar-card {
+    flex: 2;
+    background: #232838;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 1.5rem;
+    color: #E0E0E0;
+}
+
+.trades-header {
+    display: flex;
+    gap: 2rem;
+    border-bottom: 2px solid #2d3344;
+    margin-bottom: 1rem;
+}
+
+.active-tab {
+    font-weight: bold;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 0.5rem;
+    color: #E0E0E0;
+}
+
+.inactive-tab {
+    color: #B0B0B0;
+}
+
+.trades-table {
+    width: 100%;
+    font-size: 1rem;
+    color: #E0E0E0;
+}
+
+.trades-table th {
+    color: #B0B0B0;
+    text-align: left;
+    background: #1a1e2c;
+}
+
+.view-more {
+    margin-top: 1rem;
+    text-align: right;
+    color: #4CAF50;
+    cursor: pointer;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.calendar-nav {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #E0E0E0;
+}
+
+.calendar-month {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #E0E0E0;
+}
+
+.calendar-placeholder {
+    width: 100%;
+    height: 320px;
+    background: #1a1e2c;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #B0B0B0;
+    font-size: 1.2rem;
+}
+
+/* Greeting */
+.greeting {
+    margin-bottom: 1.5rem;
+    color: #E0E0E0;
+}
+
+/* --- Craft.do Inspired UI --- */
+h1, h2, h3 {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 1rem;
+    color: #E0E0E0;
+}
+
+h1 {
+    font-size: 2.2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+.button, .log-trade-btn {
+    background: linear-gradient(90deg, #00FF9C 0%, #FF4C4C 100%);
+    color: #121212;
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.18);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.button:hover, .log-trade-btn:hover {
+    background: linear-gradient(90deg, #FF4C4C 0%, #00FF9C 100%);
+    color: #ECECEC;
+    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.32);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.card {
+    background: #232323;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.7);
+    padding: 1.5rem 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+    color: #ECECEC;
+}
+
+.table th, .table td {
+    background: #232323;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: left;
+    color: #ECECEC;
+}
+
+.table th {
+    font-weight: 700;
+    background: #181818;
+    color: #ECECEC;
+}
+
+.positive, .pl-positive {
+    color: #00FF9C !important;
+    font-weight: bold;
+    text-shadow: 0 0 6px #00FF9C44;
+}
+
+.negative, .pl-negative {
+    color: #FF4C4C !important;
+    font-weight: bold;
+    text-shadow: 0 0 6px #FF4C4C44;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background: #181818;
+}
+::-webkit-scrollbar-thumb {
+    background: #232323;
+    border-radius: 8px;
+}
+
+/* Dashboard Styles */
+.dashboard-container, .dashboard-card, .kpi-card, .chart-card, .trades-card, .calendar-card, .chart-title, .calendar-month, .win-stat, .loss-stat, .kpi-value, .kpi-label, .active-tab, .inactive-tab, .trades-table, .view-more, .greeting {
+    color: #7c5cff !important;
+}
+
+.dashboard-container a, .dashboard-card a, .kpi-card a, .chart-card a, .trades-card a, .calendar-card a {
+    color: #7c5cff !important;
+}
+
+/* Optional: Passe Tabellen-Header und Platzhalter an */
+.trades-table th, .chart-placeholder, .calendar-placeholder {
+    color: #7c5cff !important;
+}
+
+/* New styles for the dashboard */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: #fff;
+}
+
+.dashboard-card, .kpi-card, .chart-card, .trades-card, .calendar-card {
+    background: #f7f7fb;
+    color: #7c5cff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+}
+
+.chart-placeholder, .calendar-placeholder {
+    background: #f4f4f4;
+    color: #7c5cff;
+}
+
+.trades-table th {
+    background: #f4f4f4;
+    color: #7c5cff;
+}
+
+.trades-header {
+    border-bottom: 2px solid #eee;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #c0392b;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+.trade-row:hover .delete-btn {
+    opacity: 1;
+}
+
+.daterangepicker {
+    z-index: 99999 !important;
+} 

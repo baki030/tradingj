@@ -1,0 +1,103 @@
+# Environment variables (CRITICAL - Never commit these!)
+.env
+.env.*
+*.env
+.env.local
+.env.production
+.env.development
+.env.test
+
+# Database files (contain user data)
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Upload files (may contain sensitive trading data)
+uploads/
+static/uploads/
+
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+venv_new/
+env/
+ENV/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+
+# Logs (may contain sensitive info)
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Security and credentials
+*.pem
+*.key
+*.crt
+*.p12
+credentials/
+secrets/
+
+# Exclude other projects and test files
+trading-dashboard/
+trading-dashboard.zip
+test_output.html
+
+# Debug and test files (may contain sensitive data)
+debug_*.py
+test_*.py
+check_*.py
+
+# Migration files (optional, depends on your preference)
+migrations/
+add_account_type_column.py
+migrate_db.py
+update_trades.py
+init_db.py
+
+# Backup files (may contain sensitive data)
+*_backup.*
+*.bak
+*.backup
+
+# Template test files
+templates/chart_debug.html
+templates/chart_test.html
+templates/dashboard_clean.html
+templates/dashboard_minimal.html
+templates/test.html
+
+# Additional security exclusions
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+
+# Flask specific
+flask_session/ 

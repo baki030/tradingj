@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal - {% block title %}{% endblock %}</title>
+          <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 10000) | random }}">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+</head>
+<body>
+    <!-- Moderne, dunkle Sidebar -->
+    <div id="nav-sidebar" style="width: 220px; background: #181c2a; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: flex-start; z-index: 100; transition: width 0.3s; min-width: 56px;">
+        <div style="color: #7c5cff; font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; margin: 2rem 0 2.5rem 2rem; text-align: left; width: 100%;">
+            TradePilot
+        </div>
+        <nav style="width: 100%;">
+            <ul style="list-style: none; padding: 0; margin: 0; width: 100%;">
+                <li><a href="{{ url_for('dashboard') }}" style="display: flex; align-items: center; gap: 0.7rem; color: #fff; text-decoration: none; padding: 0.9rem 2rem; border-radius: 8px; font-size: 1.1rem; font-weight: 500;">Dashboard</a></li>
+                <li><a href="{{ url_for('daily_journal') }}" style="display: flex; align-items: center; gap: 0.7rem; color: #fff; text-decoration: none; padding: 0.9rem 2rem; border-radius: 8px; font-size: 1.1rem; font-weight: 500;">Daily Journal</a></li>
+                <li><a href="{{ url_for('journal_hub') }}" style="display: flex; align-items: center; gap: 0.7rem; color: #fff; text-decoration: none; padding: 0.9rem 2rem; border-radius: 8px; font-size: 1.1rem; font-weight: 500;">Journal Hub</a></li>
+                <li><a href="{{ url_for('add_trade') }}" style="display: flex; align-items: center; gap: 0.7rem; color: #000; text-decoration: none; padding: 0.9rem 2rem; border-radius: 8px; font-size: 1.1rem; font-weight: 500; background-color: #7c5cff; margin: 0 1rem;">Add Trade</a></li>
+            </ul>
+        </nav>
+        <!-- Settings und Logout-Buttons unten links -->
+        {% if current_user.is_authenticated %}
+          <div style="position: absolute; left: 20px; bottom: 20px; width: 80%;">
+            <div style="margin-bottom: 0.5rem;">
+              <a href="{{ url_for('settings') }}" style="width:100%; background:transparent; color:#fff; border:none; padding:0.6rem 0; border-radius:6px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem; text-decoration:none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l-.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Settings
+              </a>
+            </div>
+            <div>
+              <a href="{{ url_for('logout') }}" style="width:100%; background:transparent; color:#fff; border:none; padding:0.6rem 0; border-radius:6px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; text-decoration:none;">
+                Logout
+              </a>
+            </div>
+          </div>
+        {% endif %}
+        <div id="nav-sidebar-toggle" style="display:none; position: absolute; top: 16px; right: -18px; width: 36px; height: 36px; background: #232323; border-radius: 8px; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: opacity 0.2s;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="16 19 9 12 16 5" stroke="#e5e7eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <polyline points="13 19 6 12 13 5" stroke="#e5e7eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+    <main style="margin-left: 220px; transition: margin-left 0.3s; max-width: calc(100vw - 220px); overflow-x: auto; box-sizing: border-box;">
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+    // Sidebar ein-/ausklappen
+    const navSidebar = document.getElementById('nav-sidebar');
+    const navSidebarToggle = document.getElementById('nav-sidebar-toggle');
+    const mainContent = document.querySelector('main');
+    let navSidebarCollapsed = false;
+    // Beim Laden: Zustand aus localStorage lesen
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+      navSidebarCollapsed = true;
+      navSidebar.style.width = '56px';
+      mainContent.style.marginLeft = '56px';
+      navSidebar.querySelectorAll('a, div, span, ul, li').forEach(el => {
+        if (el !== navSidebarToggle && el !== navSidebar) el.style.display = 'none';
+      });
+      navSidebarToggle.style.display = 'flex';
+    } else {
+      navSidebarCollapsed = false;
+      navSidebar.style.width = '220px';
+      mainContent.style.marginLeft = '220px';
+      navSidebar.querySelectorAll('a, div, span, ul, li').forEach(el => {
+        if (el !== navSidebarToggle && el !== navSidebar) el.style.display = '';
+      });
+      navSidebarToggle.style.display = 'flex';
+    }
+    navSidebarToggle.style.display = 'flex'; // Toggle-Button immer sichtbar lassen
+    navSidebarToggle.onclick = () => {
+      navSidebarCollapsed = !navSidebarCollapsed;
+      if (navSidebarCollapsed) {
+        navSidebar.style.width = '56px';
+        mainContent.style.marginLeft = '56px';
+        navSidebar.querySelectorAll('a, div, span, ul, li').forEach(el => {
+          if (el !== navSidebarToggle && el !== navSidebar) el.style.display = 'none';
+        });
+        navSidebarToggle.style.display = 'flex';
+        localStorage.setItem('sidebarCollapsed', 'true');
+      } else {
+        navSidebar.style.width = '220px';
+        mainContent.style.marginLeft = '220px';
+        navSidebar.querySelectorAll('a, div, span, ul, li').forEach(el => {
+          if (el !== navSidebarToggle && el !== navSidebar) el.style.display = '';
+        });
+        navSidebarToggle.style.display = 'flex';
+        localStorage.setItem('sidebarCollapsed', 'false');
+      }
+    };
+    // Sidebar automatisch schließen, wenn ein Link geklickt wird
+    navSidebar.querySelectorAll('a').forEach(link => {
+      if (link === navSidebarToggle) return;
+      link.addEventListener('click', function(e) {
+        // Nur einklappen, wenn Sidebar offen ist
+        if (!navSidebarCollapsed) {
+          navSidebarCollapsed = true;
+          navSidebar.style.width = '56px';
+          mainContent.style.marginLeft = '56px';
+          navSidebar.querySelectorAll('a, div, span, ul, li').forEach(el => {
+            if (el !== navSidebarToggle && el !== navSidebar) el.style.display = 'none';
+          });
+          navSidebarToggle.style.display = 'flex';
+          localStorage.setItem('sidebarCollapsed', 'true');
+        }
+      });
+    });
+    </script>
+</body>
+</html> 

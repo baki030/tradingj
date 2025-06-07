@@ -1,0 +1,639 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Journal{% endblock %}
+
+{% block content %}
+<div class="min-h-screen" style="background:#f9fafb;">
+  <div class="container" style="max-width: 100%; margin: 0 auto; padding: 1rem;">
+    
+    <!-- Header Navigation -->
+    <div class="card-white" style="margin: 1rem 0; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <a href="{{ url_for('dashboard') }}" class="btn-secondary">
+          &#8592; Dashboard
+        </a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.7rem;">
+        <button id="prevDayBtn" class="nav-btn">&#8592;</button>
+        <span style="font-size: 1.1rem; font-weight: 600; background: #f4f4f4; border-radius: 6px; padding: 0.4rem 1.2rem; color: #7c5cff;">{{ date_label }}</span>
+        <button id="nextDayBtn" class="nav-btn">&#8594;</button>
+        <button id="todayBtn" class="nav-btn" style="padding: 0.4rem 1.2rem; font-size: 1.1rem; font-weight: 500;">Today</button>
+      </div>
+    </div>
+
+
+
+    <!-- Daily Statistics Grid -->
+    <div class="card-white" style="margin-bottom: 1.5rem;">
+      <h3 style="margin: 0 0 1.5rem 0; color: #374151; font-size: 1.3rem; font-weight: 700;">Daily Statistics</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem;">
+        
+        <div style="text-align: center; padding: 0.8rem; background: #f8fafc; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem; font-weight: 500;">Total Trades</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #1e293b;">{{ total_trades }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: #f0fdf4; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #166534; margin-bottom: 0.4rem; font-weight: 500;">Winners</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #15803d;">{{ winners }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: #fef2f2; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #991b1b; margin-bottom: 0.4rem; font-weight: 500;">Losers</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #dc2626;">{{ losers }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.4rem; font-weight: 500;">Win Rate</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #334155;">{{ "%.1f"|format(winrate) }}%</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: {% if gross_pnl >= 0 %}#f0fdf4{% else %}#fef2f2{% endif %}; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: {% if gross_pnl >= 0 %}#166534{% else %}#991b1b{% endif %}; margin-bottom: 0.4rem; font-weight: 500;">Gross P&L</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: {% if gross_pnl >= 0 %}#15803d{% else %}#dc2626{% endif %};">{{ "%.2f"|format(gross_pnl) }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: #fef2f2; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #991b1b; margin-bottom: 0.4rem; font-weight: 500;">Commissions</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #dc2626;">{{ "%.2f"|format(commissions) }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: {% if daily_pnl >= 0 %}#f0fdf4{% else %}#fef2f2{% endif %}; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: {% if daily_pnl >= 0 %}#166534{% else %}#991b1b{% endif %}; margin-bottom: 0.4rem; font-weight: 500;">Net P&L</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: {% if daily_pnl >= 0 %}#15803d{% else %}#dc2626{% endif %};">{{ "%.2f"|format(daily_pnl) }}</div>
+        </div>
+        
+        <div style="text-align: center; padding: 0.8rem; background: #f8fafc; border-radius: 8px;">
+          <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem; font-weight: 500;">Volume</div>
+          <div style="font-size: 1.6rem; font-weight: 700; color: #1e293b;">{{ "%.2f"|format(volume) }}</div>
+        </div>
+        
+      </div>
+    </div>
+
+    <!-- Charts Section - 3 charts in a row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      
+      <!-- Entry Type Analysis Chart -->
+      <div class="card-white">
+        <div style="font-weight: 700; margin-bottom: 1rem; color: #374151; font-size: 1.1rem; text-align: center;">Entry Type Analysis</div>
+        <div style="height: 220px; position: relative;">
+          <canvas id="entryTypeChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+      </div>
+
+      <!-- Hourly Performance Chart -->
+      <div class="card-white">
+        <div style="font-weight: 700; margin-bottom: 1rem; color: #374151; font-size: 1.1rem; text-align: center;">Hourly Performance</div>
+        <div style="height: 220px; position: relative;">
+          <canvas id="hourlyChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Note Section -->
+    <div class="card-white" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 1.2rem; font-weight: 600; color: #374151;">
+          Daily Note
+          <span id="noteIndicator" style="display: none; font-size: 1rem; color: #7c5cff; margin-left: 0.5rem;">(1)</span>
+        </div>
+        <button id="viewNoteBtn" class="btn-secondary" style="padding: 0.5rem 1.2rem;">View Note</button>
+      </div>
+    </div>
+
+    <!-- Trades Section -->
+    <div class="card-white">
+      {% if trades and trades|length > 0 %}
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-size: 1.3rem; font-weight: 700; color: #374151;">Trades ({{ trades|length }})</div>
+          <div style="font-size: 1rem; color: #6b7280; margin-top: 0.5rem;">
+            Total P&L: 
+            <span style="font-weight: 700; color: {% if daily_pnl >= 0 %}#15803d{% else %}#dc2626{% endif %};">
+              ${{ '%.2f' % daily_pnl }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Trade Actions -->
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+          <a href="{{ url_for('trade_new') }}" class="btn-primary">+ Log Trade</a>
+        </div>
+
+        <!-- Trades Table -->
+        <div style="overflow-x: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <table style="width: 100%; border-collapse: collapse; background: white;">
+            <thead>
+              <tr style="background: linear-gradient(135deg, #7c5cff, #6366f1); color: white;">
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">EINSTIEGSZEIT</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">SYMBOL</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">TYP</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">VOLUMEN</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">AUSSTIEGSZEIT</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">KOMMISSION</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">SWAP</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">GEWINN</th>
+                <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">RATING</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for trade in trades %}
+              <tr class="trade-row" data-detail-url="/trade/{{ trade.id }}" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s ease; cursor: pointer;">
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">
+                  {{ trade.date.strftime('%Y.%m.%d %H:%M:%S') if trade.date else '-' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+                  {{ trade.symbol or '-' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem;">
+                  <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: {% if trade.direction == 'buy' %}#dcfce7; color: #166534{% else %}#fef2f2; color: #991b1b{% endif %};">
+                    {{ trade.direction.upper() if trade.direction else '-' }}
+                  </span>
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">
+                  {{ '%.2f'|format(trade.position_size) if trade.position_size else '0.00' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">
+                  {{ trade.exit_date.strftime('%Y.%m.%d %H:%M:%S') if trade.exit_date else '-' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">
+                  ${{ '%.2f'|format(trade.kommission) if trade.kommission else '0.00' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">
+                  ${{ '%.2f'|format(trade.swap) if trade.swap else '0.00' }}
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; font-weight: 700;">
+                  <span style="color: {% if trade.total_pnl >= 0 %}#15803d{% else %}#dc2626{% endif %};">
+                    ${{ '%.2f' % trade.total_pnl }}
+                  </span>
+                </td>
+                <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #ffd700; font-weight: 600;">
+                  {% if trade.trade_rating %}
+                    {{ trade.trade_rating|int }} ★
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6b7280;">
+          <div style="font-size: 1.2rem; margin-bottom: 1rem; color: #9ca3af;">No trades found for this date.</div>
+          <a href="{{ url_for('trade_new') }}" class="btn-primary">+ Log Your First Trade</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Note Modal -->
+<div id="noteModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:1000;">
+  <div style="background:#fff; border-radius:16px; padding:2rem; width:600px; max-width:90vw; position:relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+    <button id="closeNoteModal" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:1.5rem; color:#6b7280; cursor:pointer; padding: 0.5rem;" title="Close">&times;</button>
+    <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:1.5rem; color: #374151;">Daily Note</h2>
+    <textarea id="noteText" placeholder="What did you learn today? How did you feel about your trading? Any observations or insights..." style="width:100%; min-height:200px; border-radius:8px; border:2px solid #e5e7eb; padding:1rem; font-size:1rem; margin-bottom:1.5rem; background:#fafbfc; resize: vertical; line-height: 1.5;"></textarea>
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <button id="cancelNoteBtn" style="background:#f3f4f6; color:#374151; border:none; border-radius:8px; padding:0.7rem 1.5rem; font-weight:500; font-size:1rem; cursor: pointer;">Cancel</button>
+      <button id="saveNoteBtn" style="background:#7c5cff; color:#fff; border:none; border-radius:8px; padding:0.7rem 1.5rem; font-weight:600; font-size:1rem; cursor: pointer;">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden Data -->
+<script type="application/json" id="chart-labels-data">{{ chart_labels | tojson }}</script>
+<script type="application/json" id="chart-wins-data">{{ chart_wins | tojson }}</script>
+<script type="application/json" id="chart-losses-data">{{ chart_losses | tojson }}</script>
+<script type="application/json" id="chart-totals-data">{{ chart_totals | tojson }}</script>
+<script type="application/json" id="selected-date-data">"{{ selected_date }}"</script>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Parse hidden data
+const chartLabelsEl = document.getElementById('chart-labels-data');
+const chartLabels = chartLabelsEl ? JSON.parse(chartLabelsEl.textContent) : [];
+const chartWinsEl = document.getElementById('chart-wins-data');
+const chartWins = chartWinsEl ? JSON.parse(chartWinsEl.textContent) : [];
+const chartLossesEl = document.getElementById('chart-losses-data');
+const chartLosses = chartLossesEl ? JSON.parse(chartLossesEl.textContent) : [];
+const chartTotalsEl = document.getElementById('chart-totals-data');
+const chartTotals = chartTotalsEl ? JSON.parse(chartTotalsEl.textContent) : [];
+const selectedDateEl = document.getElementById('selected-date-data');
+const selectedDate = selectedDateEl ? JSON.parse(selectedDateEl.textContent) : '';
+
+// Debug: Log chart data
+console.log('Daily Journal Entry Type Chart Data:');
+console.log('Labels:', chartLabels);
+console.log('Wins:', chartWins);
+console.log('Losses:', chartLosses);
+console.log('Totals:', chartTotals);
+
+// Chart data from backend
+const weekdayLabels = {{ weekday_labels | tojson }};
+const weekdayWins = {{ weekday_wins | tojson }};
+const weekdayLosses = {{ weekday_losses | tojson }};
+const hourlyLabels = {{ hourly_labels | tojson }};
+const hourlyWins = {{ hourly_wins | tojson }};
+const hourlyLosses = {{ hourly_losses | tojson }};
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Daily Journal - Initializing...');
+
+  // Initialize all functionality
+  initializeCharts();
+  initializeNavigation();
+  initializeTradeRows();
+  initializeNoteModal();
+
+  function initializeCharts() {
+    // Entry Type Chart
+    const entryTypeCtx = document.getElementById('entryTypeChart');
+    if (entryTypeCtx) {
+      // Prepare data for all entry types
+      const allEntryTypes = ['Fibonacci', 'MSS + S', 'MSS + D', 'FOMO'];
+      const entryTypeWins = [];
+      const entryTypeLosses = [];
+      
+      allEntryTypes.forEach(entryType => {
+        const dataIndex = chartLabels.indexOf(entryType);
+        if (dataIndex !== -1) {
+          entryTypeWins.push(chartWins[dataIndex] || 0);
+          entryTypeLosses.push(chartLosses[dataIndex] || 0);
+        } else {
+          entryTypeWins.push(0);
+          entryTypeLosses.push(0);
+        }
+      });
+      
+      console.log('Entry Type Chart Data:');
+      console.log('Entry Types:', allEntryTypes);
+      console.log('Wins:', entryTypeWins);
+      console.log('Losses:', entryTypeLosses);
+      
+      new Chart(entryTypeCtx, {
+        type: 'bar',
+        data: {
+          labels: allEntryTypes,
+          datasets: [
+            {
+              label: 'Wins',
+              data: entryTypeWins,
+              backgroundColor: '#22C55E',
+              borderColor: '#16A34A',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'Losses',
+              data: entryTypeLosses,
+              backgroundColor: '#EF4444',
+              borderColor: '#DC2626', 
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 11, weight: '600' }
+              }
+            }
+          },
+          scales: {
+            x: { 
+              stacked: true,
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            },
+            y: { 
+              stacked: true, 
+              beginAtZero: true,
+              grid: { color: '#f1f5f9' },
+              ticks: { 
+                font: { size: 10 },
+                stepSize: 1
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+
+    // Hourly Chart
+    const hourlyCtx = document.getElementById('hourlyChart');
+    if (hourlyCtx) {
+      new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+          labels: hourlyLabels,
+          datasets: [
+            {
+              label: 'Wins',
+              data: hourlyWins,
+              backgroundColor: '#22C55E',
+              borderColor: '#16A34A',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'Losses',
+              data: hourlyLosses,
+              backgroundColor: '#EF4444',
+              borderColor: '#DC2626', 
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 11, weight: '600' }
+              }
+            }
+          },
+          scales: {
+            x: { 
+              stacked: true,
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            },
+            y: { 
+              stacked: true, 
+              beginAtZero: true,
+              grid: { color: '#f1f5f9' },
+              ticks: { 
+                font: { size: 10 },
+                stepSize: 1
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+  }
+
+  function initializeNavigation() {
+    function getDateFromQuery() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('date');
+    }
+    
+    function setDateInQuery(newDate) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('date', newDate);
+      
+      // Keep current filters
+      const accountId = document.getElementById('account-selector')?.value;
+      const accountType = document.getElementById('account-type-selector')?.value;
+      if (accountId && accountId !== 'all') {
+        url.searchParams.set('account_id', accountId);
+      }
+      if (accountType && accountType !== 'all') {
+        url.searchParams.set('account_type', accountType);
+      }
+      
+      window.location.href = url.toString();
+    }
+    
+    function addDays(dateStr, days) {
+      let workingDate = dateStr || new Date().toISOString().slice(0, 10);
+      const parts = workingDate.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      d.setDate(d.getDate() + days);
+      
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Navigation event listeners
+    document.getElementById('prevDayBtn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      const currentDate = getDateFromQuery() || selectedDate;
+      const prev = addDays(currentDate, -1);
+      setDateInQuery(prev);
+    });
+    
+    document.getElementById('nextDayBtn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      const currentDate = getDateFromQuery() || selectedDate;
+      const next = addDays(currentDate, 1);
+      setDateInQuery(next);
+    });
+    
+    document.getElementById('todayBtn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      const today = new Date().toISOString().slice(0, 10);
+      setDateInQuery(today);
+    });
+
+    // Filter update function (removed account filters)
+    window.updateFilters = function() {
+      const currentDate = getDateFromQuery() || selectedDate;
+      
+      const url = new URL(window.location.href);
+      if (currentDate) {
+        url.searchParams.set('date', currentDate);
+      }
+      
+      window.location.href = url.toString();
+    };
+  }
+
+  function initializeTradeRows() {
+    document.querySelectorAll('.trade-row').forEach(function(row) {
+      const url = row.getAttribute('data-detail-url');
+      if (url) {
+        row.addEventListener('click', function(e) {
+          if (e.target.tagName === 'BUTTON' || e.target.closest('form') || e.target.tagName === 'A') {
+            return;
+          }
+          window.location.href = url;
+        });
+        
+        row.addEventListener('mouseenter', function() {
+          row.style.backgroundColor = '#f8fafc';
+          row.style.transform = 'translateY(-1px)';
+          row.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+          row.style.backgroundColor = 'white';
+          row.style.transform = 'translateY(0)';
+          row.style.boxShadow = 'none';
+        });
+      }
+    });
+  }
+
+  function initializeNoteModal() {
+    const viewNoteBtn = document.getElementById('viewNoteBtn');
+    const noteModal = document.getElementById('noteModal');
+    const closeNoteModal = document.getElementById('closeNoteModal');
+    const cancelNoteBtn = document.getElementById('cancelNoteBtn');
+    const noteText = document.getElementById('noteText');
+    const saveNoteBtn = document.getElementById('saveNoteBtn');
+    const noteIndicator = document.getElementById('noteIndicator');
+    const noteKey = `note_${selectedDate || new Date().toISOString().slice(0, 10)}`;
+    
+    // Function to update note indicator
+    function updateNoteIndicator() {
+      const noteContent = localStorage.getItem(noteKey);
+      if (noteIndicator) {
+        if (noteContent && noteContent.trim() !== '') {
+          noteIndicator.style.display = 'inline';
+        } else {
+          noteIndicator.style.display = 'none';
+        }
+      }
+    }
+    
+    // Initialize indicator on page load
+    updateNoteIndicator();
+    
+    function showModal() {
+      noteModal.style.display = 'flex';
+      noteText.value = localStorage.getItem(noteKey) || '';
+      noteText.focus();
+    }
+    
+    function hideModal() {
+      noteModal.style.display = 'none';
+    }
+    
+    if (viewNoteBtn) {
+      viewNoteBtn.addEventListener('click', showModal);
+    }
+    
+    if (closeNoteModal) {
+      closeNoteModal.addEventListener('click', hideModal);
+    }
+    
+    if (cancelNoteBtn) {
+      cancelNoteBtn.addEventListener('click', hideModal);
+    }
+    
+    if (saveNoteBtn) {
+      saveNoteBtn.addEventListener('click', function() {
+        localStorage.setItem(noteKey, noteText.value);
+        updateNoteIndicator(); // Update indicator after saving
+        hideModal();
+        // Show success feedback
+        const originalText = saveNoteBtn.textContent;
+        saveNoteBtn.textContent = 'Saved!';
+        saveNoteBtn.style.background = '#10b981';
+        setTimeout(() => {
+          saveNoteBtn.textContent = originalText;
+          saveNoteBtn.style.background = '#7c5cff';
+        }, 1000);
+      });
+    }
+    
+    // Close modal on outside click
+    if (noteModal) {
+      noteModal.addEventListener('click', function(e) {
+        if (e.target === noteModal) {
+          hideModal();
+        }
+      });
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && noteModal.style.display === 'flex') {
+        hideModal();
+      }
+    });
+  }
+});
+</script>
+
+<style>
+/* Trade Row Hover Effects */
+.trade-row {
+  transition: all 0.2s ease-in-out;
+}
+
+.trade-row:hover {
+  background-color: #f8fafc !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Grid Adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding: 0.5rem !important;
+  }
+  
+  .card-white {
+    margin: 0.5rem 0 !important;
+  }
+}
+
+/* Custom Button Styles */
+.nav-btn {
+  background: #7c5cff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #6366f1;
+  transform: translateY(-1px);
+}
+
+/* Modal Animation */
+#noteModal {
+  backdrop-filter: blur(4px);
+}
+
+#noteModal > div {
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+</style>
+
+{% endblock %}

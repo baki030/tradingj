@@ -1,0 +1,919 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+/* FORCE WHITE BACKGROUND - OVERRIDE ALL OTHER STYLES */
+body, .dashboard-container, main, html {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+}
+
+/* FORCE OVERRIDE KPI CARD STYLES - CLEAN WHITE */
+.kpi-card {
+    background: white !important;
+    background-image: none !important;
+    color: black !important;
+    border: 1px solid #e0e0e0 !important;
+    box-shadow: none !important;
+}
+
+/* ENSURE CHART CONTAINERS ARE VISIBLE - CLEAN WHITE */
+.chart-card {
+    background: white !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow: none !important;
+    border: 1px solid #f0f0f0 !important;
+}
+
+#entry-type-chart-container, 
+#weekdayChart, 
+#hourlyChart {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 200px !important;
+}
+
+/* FORCE CALENDAR GRID TO BE WHITE */
+#calendar-grid {
+    background: white !important;
+    background-color: white !important;
+}
+
+/* ADDITIONAL OVERRIDE FOR CALENDAR GRID */
+#calendar-grid, div#calendar-grid {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+}
+
+/* SUPER STRONG OVERRIDE FOR CALENDAR GRID */
+body #calendar-grid, 
+body div#calendar-grid,
+html #calendar-grid,
+html body #calendar-grid {
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+}
+
+/* FORCE REMOVE ANY DEBUG BLOCKS IN WEEKLY STATS */
+#calendar-weeks div[style*="background: #f0f0f0"],
+#calendar-weeks div[style*="Debug"],
+div[style*="Debug"]:contains("weeks calculated") {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* ENSURE CALENDAR WEEKS ARE VISIBLE - CLEAN WHITE */
+#calendar-weeks {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #e0e0e0 !important;
+    min-height: 200px !important;
+    width: 180px !important;
+    display: block !important;
+    position: relative !important;
+    z-index: 999 !important;
+    box-shadow: none !important;
+}
+
+/* CLEAN WHITE CONTAINERS */
+.card-white {
+    background: white !important;
+    box-shadow: none !important;
+    border: 1px solid #f0f0f0 !important;
+}
+
+/* ACCOUNT FILTER CONTAINER - CLEAN WHITE */
+div[style*="background: white"][style*="padding: 1rem"] {
+    box-shadow: none !important;
+    border: 1px solid #f0f0f0 !important;
+}
+
+/* MONTHLY MODAL - CLEAN WHITE */
+#monthlyViewModal div[style*="background:#fff"] {
+    box-shadow: none !important;
+    border: 1px solid #f0f0f0 !important;
+}
+
+/* CALENDAR DAY BOXES - CLEAN WHITE */
+div[style*="border-radius: 18px"][style*="width: 120px"] {
+    box-shadow: none !important;
+}
+
+/* FORM INPUTS AND SELECTS - CLEAN WHITE */
+select, input[type="text"] {
+    box-shadow: none !important;
+    border: 1px solid #e0e0e0 !important;
+}
+
+/* BUTTONS - CLEAN WHITE */
+button, .btn-primary {
+    box-shadow: none !important;
+}
+
+/* WEEKLY STATS BOXES - CLEAN WHITE */
+div[style*="background: white"][style*="border-radius: 10px"] {
+    box-shadow: none !important;
+}
+</style>
+
+<div class="dashboard-container" style="min-height: 100vh; padding: 0 1rem 2rem; background: white !important;">
+  <div style="max-width: 100%; margin: 0 auto;">
+    
+    <!-- Header with Welcome Message - ONLY CHANGED THIS PART -->
+    <div style="text-align: left; padding: 1rem 0; margin-bottom: 1rem;">
+      <h1 style="margin: 0; color: #333; font-size: 1.5rem; font-weight: 400;">
+        Welcome back, 
+        <span style="color: #7c5cff; font-weight: 600;">
+          {% if current_username %}{{ current_username }}{% else %}User{% endif %}
+        </span>!
+      </h1>
+    </div>
+    
+    <!-- Header Row with KPIs -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding-top: 1rem;">
+      <!-- Net P&L Card -->
+      <div class="kpi-card" style="background: white; color: black; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+        <div style="font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: black;">Net P&L</div>
+        <div id="net-pnl" style="font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; color: {% if net_pnl >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">${{ "%.2f"|format(net_pnl) }}</div>
+        <div style="font-size: 0.9rem; color: black;">{{ (trades|length) if trades else 0 }} trades</div>
+        <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">{{ trade_win_wins }}W / {{ trade_win_draws }}BE / {{ trade_win_losses }}L</div>
+      </div>
+
+      <!-- Trade Win Rate Card -->
+      <div class="kpi-card" style="background: white; color: black; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+        <div style="font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: black;">Win Rate</div>
+        <div id="trade-win-percent" style="font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; color: black;">{{ trade_win_percent }}%</div>
+        <div style="font-size: 0.9rem; color: black;">{{ trade_win_wins }}W / {{ trade_win_losses }}L</div>
+      </div>
+
+      <!-- Profit Factor Card -->
+      <div class="kpi-card" style="background: white; color: black; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+        <div style="font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: black;">Profit Factor</div>
+        <div id="profit-factor" style="font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; color: black;">{{ profit_factor }}</div>
+        <div style="font-size: 0.9rem; color: black;">Risk Management</div>
+      </div>
+
+      <!-- Average Win/Loss Card -->
+      <div class="kpi-card" style="background: white; color: black; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+        <div style="font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: black;">Avg Win/Loss</div>
+        <div id="avg-win-loss-trade" style="font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; color: {% if avg_win_loss_trade >= 1 %}#27ae60{% else %}#e74c3c{% endif %};">{{ avg_win_loss_trade }}</div>
+        <div style="font-size: 0.85rem; color: #666; display: flex; justify-content: space-between; margin-top: 0.2rem;">
+          <span style="color: #27ae60;">Avg Win: ${{ "%.2f"|format(avg_win) }}</span>
+          <span style="color: #e74c3c;">Avg Loss: ${{ "%.2f"|format(avg_loss|abs) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Filter -->
+    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex-wrap: nowrap;">
+      <div style="display: flex; align-items: center; gap: 1rem; flex-shrink: 0; min-width: 240px;">
+        <label for="account-type-selector" style="font-weight: 600; color: #333; white-space: nowrap; min-width: 100px;">Account Type:</label>
+        <select id="account-type-selector" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 0.5rem 0.6rem; font-size: 1rem; background: white; min-width: 120px; width: 120px;">
+          <option value="all" {% if not selected_account_type or selected_account_type == 'all' %}selected{% endif %}>All Types</option>
+          <option value="Live" {% if selected_account_type == 'Live' %}selected{% endif %}>Live</option>
+          <option value="Funded" {% if selected_account_type == 'Funded' %}selected{% endif %}>Funded</option>
+        </select>
+      </div>
+      
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+        <label style="font-weight: 600; color: #333; white-space: nowrap;">Date Range:</label>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="text" id="date-range-picker" placeholder="Select date range" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 0.5rem; font-size: 1rem; background: white; min-width: 200px; cursor: pointer;" readonly>
+          <button id="apply-date-range" style="background: #7c5cff; color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.9rem; cursor: pointer; margin-left: 0.5rem;">Apply</button>
+          <button id="clear-date-range" style="background: #f8f9fa; color: #666; border: 1px solid #e0e0e0; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.9rem; cursor: pointer;">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+      
+      <!-- Entry Type Chart -->
+      <div class="chart-card" style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="font-weight: bold; margin-bottom: 1rem; color: #333; font-size: 1.1rem; text-align: center;">Entry Type Analysis</div>
+        <canvas id="entryTypeChart" style="width: 100%; height: 200px; max-height: 200px;"></canvas>
+      </div>
+
+      <!-- Weekday Chart -->
+      <div class="chart-card" style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="font-weight: bold; margin-bottom: 1rem; color: #333; font-size: 1.1rem; text-align: center;">Weekday Performance</div>
+        <canvas id="weekdayChart" style="width: 100%; height: 200px; max-height: 200px;"></canvas>
+      </div>
+
+      <!-- Hourly Chart -->
+      <div class="chart-card" style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="font-weight: bold; margin-bottom: 1rem; color: #333; font-size: 1.1rem; text-align: center;">Hourly Performance</div>
+        <canvas id="hourlyChart" style="width: 100%; height: 200px; max-height: 200px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Trades and Calendar Row -->
+    <div id="monthly-stats-bar" style="display: flex; align-items: center; gap: 1.2rem; margin-bottom: 0.5rem; margin-left: 0.5rem;">
+      <span style="font-weight: 600; color: #222; font-size: 1.15rem;">Monthly stats:</span>
+      <span id="monthly-pnl" style="background: #e6fcf2; color: #27ae60; font-weight: 600; font-size: 1.15rem; border-radius: 12px; padding: 2px 14px;">$0.00</span>
+      <span id="monthly-days" style="background: #f7f7fb; color: #888; font-weight: 500; font-size: 1.1rem; border-radius: 12px; padding: 2px 14px;">0 days</span>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 200px; gap: 1.5rem; align-items: start;">
+      <div>
+        <div class="card-white">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <button id="calendar-prev" class="nav-btn">&#8592;</button>
+            <span id="calendar-month" class="calendar-month" style="font-weight: bold; font-size: 1.1rem; color: #7c5cff;"></span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button id="monthly-view-btn" class="btn-primary" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">Monthly View</button>
+              <button id="calendar-next" class="nav-btn">&#8594;</button>
+            </div>
+          </div>
+          <div id="calendar-grid" style="width: 100%; min-height: 420px; background: #ffffff; border-radius: 12px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.7rem; align-items: start; justify-items: center; padding: 1.2rem 0;"></div>
+        </div>
+      </div>
+      
+      <!-- Weekly Statistics Sidebar -->
+      <div id="calendar-weeks" style="width: 200px; background: white; border-radius: 12px; padding: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-height: 400px;">
+        <!-- Weekly statistics will be populated by JavaScript -->
+        <div style="text-align: center; color: #666; font-style: italic;">Loading weeks...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly View Modal -->
+<div id="monthlyViewModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:1000;">
+  <div style="background:#fff; border-radius:16px; padding:2rem; width:95%; max-width:1000px; height:auto; max-height:90vh; display: flex; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 style="font-size:1.8rem; font-weight:600; margin:0; color:#222;">📈 Monthly Performance</h2>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button id="monthly-year-prev" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7c5cff;">&#8592;</button>
+        <span id="monthly-year" style="font-weight: bold; font-size: 1.3rem; color: #7c5cff; min-width: 60px; text-align: center;">2024</span>
+        <button id="monthly-year-next" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7c5cff;">&#8594;</button>
+        <button id="closeMonthlyModal" style="background: #e74c3c; color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; margin-left: 1rem;">×</button>
+      </div>
+    </div>
+    
+    <!-- 4x3 Grid für 12 Monate -->
+    <div id="monthly-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+      <!-- Monate werden hier dynamisch eingefügt -->
+    </div>
+    
+    <!-- Jahresstatistik -->
+    <div style="background: #f8f9fa; border-radius: 12px; padding: 1rem; margin-top: 1rem;">
+      <h3 style="margin: 0 0 0.8rem 0; color: #222; font-size: 1.1rem; text-align: center;">📊 Yearly Summary</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem;">
+        <div style="text-align: center; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e0e0e0;">
+          <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Total P&L</div>
+          <div id="yearly-pnl" style="font-size: 1.3rem; font-weight: bold; color: #27ae60;">$0.00</div>
+        </div>
+        <div style="text-align: center; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e0e0e0;">
+          <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Total Trades</div>
+          <div id="yearly-trades" style="font-size: 1.3rem; font-weight: bold; color: #222;">0</div>
+        </div>
+        <div style="text-align: center; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e0e0e0;">
+          <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Win Rate</div>
+          <div id="yearly-winrate" style="font-size: 1.3rem; font-weight: bold; color: #7c5cff;">0%</div>
+        </div>
+        <div style="text-align: center; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e0e0e0;">
+          <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Best Month</div>
+          <div id="yearly-best" style="font-size: 1.3rem; font-weight: bold; color: #27ae60;">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+console.log('Dashboard scripts loaded - Charts ready');
+
+// Initialize calendar date
+let calendarDate = new Date();
+let currentYear = new Date().getFullYear();
+
+// Initialize Charts after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded - initializing dashboard');
+    
+    try {
+        // Initialize charts
+        initializeCharts();
+        
+        // Initialize calendar
+        setTimeout(() => {
+            if (typeof renderCalendar === 'function') {
+                console.log('🗓️ Initializing calendar for current month...');
+                renderCalendar(calendarDate.getMonth(), calendarDate.getFullYear());
+            } else {
+                console.error('❌ renderCalendar function not available!');
+            }
+        }, 100);
+        
+        // Calendar navigation
+        const prevBtn = document.getElementById('calendar-prev');
+        const nextBtn = document.getElementById('calendar-next');
+        
+        if (prevBtn) {
+            prevBtn.onclick = function() {
+                calendarDate.setMonth(calendarDate.getMonth() - 1);
+                renderCalendar(calendarDate.getMonth(), calendarDate.getFullYear());
+            };
+        }
+        
+        if (nextBtn) {
+            nextBtn.onclick = function() {
+                calendarDate.setMonth(calendarDate.getMonth() + 1);
+                renderCalendar(calendarDate.getMonth(), calendarDate.getFullYear());
+            };
+        }
+        
+        // Monthly View Modal
+        const monthlyViewBtn = document.getElementById('monthly-view-btn');
+        if (monthlyViewBtn) {
+            monthlyViewBtn.addEventListener('click', function() {
+                document.getElementById('monthlyViewModal').style.display = 'flex';
+                document.getElementById('monthly-year').textContent = currentYear;
+                loadMonthlyData(currentYear);
+            });
+        }
+        
+        const closeMonthlyModal = document.getElementById('closeMonthlyModal');
+        if (closeMonthlyModal) {
+            closeMonthlyModal.addEventListener('click', function() {
+                document.getElementById('monthlyViewModal').style.display = 'none';
+            });
+        }
+        
+        // Account selector
+        const accountSelector = document.getElementById('account-type-selector');
+        if (accountSelector) {
+            accountSelector.addEventListener('change', function() {
+                const val = this.value;
+                let url = new URL(window.location.href);
+                url.searchParams.set('account_type', val);
+                window.location.href = url.toString();
+            });
+        }
+        
+        // Date Range Picker functionality
+        const dateRangePicker = document.getElementById('date-range-picker');
+        const applyBtn = document.getElementById('apply-date-range');
+        const clearBtn = document.getElementById('clear-date-range');
+        
+        // Get selected date range from server
+        const selectedDateRange = "{{ selected_date_range or '' }}";
+        
+        // Initialize Flatpickr date range picker
+        let datePickerInstance = null;
+        if (dateRangePicker) {
+            let defaultDates = null;
+            
+            // Use selected date range if available, otherwise use current month
+            if (selectedDateRange && selectedDateRange.includes(' - ')) {
+                const [startStr, endStr] = selectedDateRange.split(' - ');
+                defaultDates = [startStr, endStr];
+                // Set the input value immediately
+                dateRangePicker.value = selectedDateRange;
+            } else {
+                const today = new Date();
+                const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                defaultDates = [firstDayOfMonth, lastDayOfMonth];
+            }
+            
+            datePickerInstance = flatpickr(dateRangePicker, {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                defaultDate: defaultDates,
+                allowInput: false,
+                clickOpens: true,
+                locale: {
+                    rangeSeparator: " - "
+                }
+            });
+        }
+        
+        if (applyBtn) {
+            applyBtn.addEventListener('click', function() {
+                const dateRange = dateRangePicker.value;
+                
+                if (dateRange && dateRange.includes(' - ')) {
+                    let url = new URL(window.location.href);
+                    url.searchParams.set('date_range', dateRange);
+                    window.location.href = url.toString();
+                } else {
+                    alert('Please select a date range');
+                }
+            });
+        }
+        
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                if (datePickerInstance) {
+                    datePickerInstance.clear();
+                }
+                let url = new URL(window.location.href);
+                url.searchParams.delete('date_range');
+                window.location.href = url.toString();
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Dashboard initialization error:', error);
+    }
+});
+
+function initializeCharts() {
+    try {
+        // Get data from hidden elements
+        const weekdayLabelsEl = document.getElementById('weekday-labels-data');
+        const weekdayWinsEl = document.getElementById('weekday-wins-data');
+        const weekdayLossesEl = document.getElementById('weekday-losses-data');
+        
+        const hourlyLabelsEl = document.getElementById('hourly-labels-data');
+        const hourlyWinsEl = document.getElementById('hourly-wins-data');
+        const hourlyLossesEl = document.getElementById('hourly-losses-data');
+        
+        // Get entry type data from hidden JSON elements
+        const entryTypeLabelsEl = document.getElementById('entry-type-labels-data');
+        const entryTypeWinsEl = document.getElementById('entry-type-wins-data');
+        const entryTypeLossesEl = document.getElementById('entry-type-losses-data');
+        const entryTypeTotalsEl = document.getElementById('entry-type-totals-data');
+        
+        if (!weekdayLabelsEl || !weekdayWinsEl || !weekdayLossesEl || !hourlyLabelsEl || !hourlyWinsEl || !hourlyLossesEl) {
+            console.error('❌ Missing chart data elements');
+            return;
+        }
+        
+        const weekdayLabels = JSON.parse(weekdayLabelsEl.textContent);
+        const weekdayWins = JSON.parse(weekdayWinsEl.textContent);
+        const weekdayLosses = JSON.parse(weekdayLossesEl.textContent);
+        
+        const hourlyLabels = JSON.parse(hourlyLabelsEl.textContent);
+        const hourlyWins = JSON.parse(hourlyWinsEl.textContent);
+        const hourlyLosses = JSON.parse(hourlyLossesEl.textContent);
+        
+        // Parse entry type data from hidden elements
+        let entryTypeLabels = [];
+        let entryTypeWins = [];
+        let entryTypeLosses = [];
+        let entryTypeTotals = [];
+        
+        if (entryTypeLabelsEl && entryTypeWinsEl && entryTypeLossesEl && entryTypeTotalsEl) {
+            entryTypeLabels = JSON.parse(entryTypeLabelsEl.textContent);
+            entryTypeWins = JSON.parse(entryTypeWinsEl.textContent);
+            entryTypeLosses = JSON.parse(entryTypeLossesEl.textContent);
+            entryTypeTotals = JSON.parse(entryTypeTotalsEl.textContent);
+        }
+        
+        // Entry Type Chart
+        const entryTypeCanvas = document.getElementById('entryTypeChart');
+        if (entryTypeCanvas) {
+            const entryTypeCtx = entryTypeCanvas.getContext('2d');
+            new Chart(entryTypeCtx, {
+                type: 'bar',
+                data: {
+                    labels: entryTypeLabels,
+                    datasets: [
+                        {
+                            label: 'Wins',
+                            data: entryTypeWins,
+                            backgroundColor: '#27ae60',
+                            borderColor: '#27ae60',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Losses',
+                            data: entryTypeLosses,
+                            backgroundColor: '#e74c3c',
+                            borderColor: '#e74c3c',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    return label + ': ' + value + ' trade' + (value !== 1 ? 's' : '');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Weekday Chart
+        const weekdayCanvas = document.getElementById('weekdayChart');
+        if (weekdayCanvas) {
+            const weekdayCtx = weekdayCanvas.getContext('2d');
+            new Chart(weekdayCtx, {
+                type: 'bar',
+                data: {
+                    labels: weekdayLabels,
+                    datasets: [
+                        {
+                            label: 'Wins',
+                            data: weekdayWins,
+                            backgroundColor: '#27ae60',
+                            borderColor: '#27ae60',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Losses',
+                            data: weekdayLosses,
+                            backgroundColor: '#e74c3c',
+                            borderColor: '#e74c3c',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+        
+        // Hourly Chart
+        const hourlyCanvas = document.getElementById('hourlyChart');
+        if (hourlyCanvas) {
+            const hourlyCtx = hourlyCanvas.getContext('2d');
+            new Chart(hourlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: hourlyLabels,
+                    datasets: [
+                        {
+                            label: 'Wins',
+                            data: hourlyWins,
+                            backgroundColor: '#27ae60',
+                            borderColor: '#27ae60',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Losses',
+                            data: hourlyLosses,
+                            backgroundColor: '#e74c3c',
+                            borderColor: '#e74c3c',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Chart initialization error:', error);
+    }
+}
+
+
+
+function renderCalendar(month, year) {
+    const monthElement = document.getElementById('calendar-month');
+    if (!monthElement) {
+        return;
+    }
+    
+    monthElement.textContent = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    const accountType = document.getElementById('account-type-selector')?.value || 'all';
+    const apiUrl = `/api/calendar-trades?month=${month+1}&year=${year}&account_type=${accountType}`;
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Update monthly stats
+            const pnl = data.monthly_pnl || 0;
+            const days = data.days_traded || 0;
+            
+            let pnlText = pnl >= 0 ? `$${Math.abs(pnl).toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+            const monthlyPnlEl = document.getElementById('monthly-pnl');
+            const monthlyDaysEl = document.getElementById('monthly-days');
+            
+            if (monthlyPnlEl && monthlyDaysEl) {
+                monthlyPnlEl.textContent = pnlText;
+                monthlyPnlEl.style.background = pnl >= 0 ? '#e6fcf2' : '#ffeaea';
+                monthlyPnlEl.style.color = pnl >= 0 ? '#27ae60' : '#e74c3c';
+                monthlyDaysEl.textContent = days + (days === 1 ? ' day' : ' days');
+            }
+            
+            // Render calendar grid
+            const grid = document.getElementById('calendar-grid');
+            if (!grid) {
+                return;
+            }
+            
+            grid.innerHTML = '';
+            
+            // Weekdays header
+            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+                const el = document.createElement('div');
+                el.textContent = d;
+                el.style.cssText = 'font-weight: bold; color: #7c5cff; text-align: center;';
+                grid.appendChild(el);
+            });
+            
+            // Empty cells for days before month start
+            const firstDay = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDay; i++) {
+                const empty = document.createElement('div');
+                grid.appendChild(empty);
+            }
+            
+            // Days of the month
+            const daysInMonth = new Date(year, month+1, 0).getDate();
+            
+            // Initialize weekly statistics tracking
+            let weekStats = [];
+            let weekSum = 0, weekDays = 0, weekIndex = 1;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const info = data.days[day] || { pnl: 0, trades: 0, winrate: 0, wins: 0, losses: 0 };
+                const box = document.createElement('div');
+                
+                // Check if today
+                const today = new Date();
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+                
+                // Styling
+                box.style.cssText = `
+                    background: ${info.trades > 0 ? (info.pnl > 0 ? '#e6fcf2' : info.pnl < 0 ? '#ffeaea' : '#fff') : '#f3f4f6'};
+                    border: 2.5px solid ${info.trades > 0 ? (info.pnl > 0 ? '#27ae60' : info.pnl < 0 ? '#e74c3c' : '#e0e0e0') : '#e0e0e0'};
+                    border-radius: 18px;
+                    width: 120px;
+                    height: 120px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: flex-start;
+                    position: relative;
+                    transition: transform 0.1s, box-shadow 0.1s;
+                    cursor: ${info.trades > 0 ? 'pointer' : 'default'};
+                    box-shadow: 0 4px 18px rgba(124,92,255,0.10);
+                `;
+                
+                // Day number
+                const dayLabel = document.createElement('div');
+                dayLabel.textContent = day;
+                dayLabel.style.cssText = `
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    font-size: 1rem;
+                    font-weight: bold;
+                    ${isToday ? 'background: #7c5cff; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;' : 'color: #bfc9d8;'}
+                `;
+                box.appendChild(dayLabel);
+                
+                if (info.trades > 0) {
+                    // Click handler
+                    box.addEventListener('click', function() {
+                        const m = (month+1).toString().padStart(2, '0');
+                        const d = day.toString().padStart(2, '0');
+                        const currentAccountType = document.getElementById('account-type-selector')?.value || 'all';
+                        const url = `/daily-journal?date=${year}-${m}-${d}${currentAccountType !== 'all' ? '&account_type=' + currentAccountType : ''}`;
+                        window.location.href = url;
+                    });
+                    
+                    // P&L
+                    const pnl = document.createElement('div');
+                    let pnlText = info.pnl >= 0 ? `$${Math.abs(info.pnl).toFixed(2)}` : `-$${Math.abs(info.pnl).toFixed(2)}`;
+                    pnl.textContent = pnlText;
+                    pnl.style.cssText = `
+                        font-weight: bold;
+                        font-size: 1.2rem;
+                        color: ${info.pnl > 0 ? '#27ae60' : info.pnl < 0 ? '#e74c3c' : '#888'};
+                        margin: 24px 0 4px 0;
+                        text-align: center;
+                    `;
+                    box.appendChild(pnl);
+                    
+                    // Trades count
+                    const trades = document.createElement('div');
+                    trades.textContent = info.trades + (info.trades === 1 ? ' trade' : ' trades');
+                    trades.style.cssText = 'font-size: 0.9rem; color: #888; margin: 2px 0; text-align: center;';
+                    box.appendChild(trades);
+                    
+                    // Wins/Losses
+                    const winLoss = document.createElement('div');
+                    winLoss.textContent = `${info.wins || 0}W/${info.losses || 0}L`;
+                    winLoss.style.cssText = 'font-size: 0.8rem; color: #666; margin: 2px 0; text-align: center;';
+                    box.appendChild(winLoss);
+                }
+                
+                grid.appendChild(box);
+                
+                // Weekly statistics calculation
+                weekSum += info.pnl;
+                if (info.trades > 0) weekDays++;
+                
+                const dayOfWeek = new Date(year, month, day).getDay(); // 0=Sunday, 6=Saturday
+                
+                if (dayOfWeek === 6 || day === daysInMonth) { // Saturday or last day of month
+                    weekStats.push({
+                        week: weekIndex,
+                        pnl: weekSum,
+                        days: weekDays
+                    });
+                    weekSum = 0; 
+                    weekDays = 0; 
+                    weekIndex++;
+                }
+            }
+            
+            // Display weekly statistics
+            const weeksDiv = document.getElementById('calendar-weeks');
+            if (weeksDiv) {
+                // Clear and rebuild weekly stats
+                weeksDiv.innerHTML = '';
+                
+                // Add header
+                const header = document.createElement('div');
+                header.innerHTML = '<h3 style="margin: 0 0 1rem 0; color: #7c5cff; text-align: center; font-size: 1.1rem;">Weekly Stats</h3>';
+                weeksDiv.appendChild(header);
+                
+                // If no weeks data, show message
+                if (weekStats.length === 0) {
+                    const noData = document.createElement('div');
+                    noData.style.cssText = 'text-align: center; color: #666; font-style: italic; padding: 1rem; background: #fff3cd; border-radius: 8px;';
+                    noData.textContent = 'No trading data for this month';
+                    weeksDiv.appendChild(noData);
+                } else {
+                    // Add each week
+                    weekStats.forEach((w, index) => {
+                        const wBox = document.createElement('div');
+                        
+                        // Conditional styling based on P&L - same colors as calendar
+                        const backgroundColor = w.days > 0 ? (w.pnl > 0 ? '#e6fcf2' : w.pnl < 0 ? '#ffeaea' : '#fff') : '#f3f4f6';
+                        const borderColor = w.days > 0 ? (w.pnl > 0 ? '#27ae60' : w.pnl < 0 ? '#e74c3c' : '#e0e0e0') : '#e0e0e0';
+                        
+                        wBox.style.cssText = `
+                            background: ${backgroundColor}; 
+                            border: 2px solid ${borderColor}; 
+                            border-radius: 10px; 
+                            box-shadow: 0 1px 4px rgba(0,0,0,0.04); 
+                            padding: 0.8rem; 
+                            margin-bottom: 0.7rem; 
+                            text-align: center;
+                            transition: transform 0.1s, box-shadow 0.1s;
+                        `;
+                        
+                        // Add hover effect
+                        wBox.onmouseover = () => {
+                            wBox.style.transform = 'translateY(-2px)';
+                            wBox.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+                        };
+                        wBox.onmouseout = () => {
+                            wBox.style.transform = 'none';
+                            wBox.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
+                        };
+                        
+                        const absVal = Math.abs(w.pnl).toFixed(2).replace(',', '.');
+                        const pnlText = w.pnl < 0 ? `-$${absVal}` : `$${absVal}`;
+                        
+                        wBox.innerHTML = `
+                            <div style='font-size:0.9rem; color:#666; margin-bottom: 0.3rem;'>Week ${w.week}</div>
+                            <div style='font-weight:bold; color:${w.pnl>=0?'#27ae60':'#e74c3c'}; font-size:1.2rem; margin-bottom: 0.3rem;'>${pnlText}</div>
+                            <div style='font-size:0.85rem; color:#888;'>${w.days} ${w.days===1?'day':'days'}</div>
+                        `;
+                        weeksDiv.appendChild(wBox);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Calendar error:', error);
+        });
+}
+
+function loadMonthlyData(year) {
+    const accountType = document.getElementById('account-type-selector')?.value || 'all';
+    
+    fetch(`/api/monthly-stats?year=${year}&account_type=${accountType}`)
+        .then(response => response.json())
+        .then(data => {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const grid = document.getElementById('monthly-grid');
+            grid.innerHTML = '';
+            
+            let yearlyPnl = 0;
+            let yearlyTrades = 0;
+            let yearlyWins = 0;
+            let bestMonth = '';
+            let bestPnl = -Infinity;
+            
+            monthNames.forEach((month, index) => {
+                const monthData = data.months[index + 1] || { pnl: 0, trades: 0, wins: 0, losses: 0 };
+                
+                yearlyPnl += monthData.pnl;
+                yearlyTrades += monthData.trades;
+                yearlyWins += monthData.wins;
+                
+                if (monthData.pnl > bestPnl) {
+                    bestPnl = monthData.pnl;
+                    bestMonth = month;
+                }
+                
+                const monthBox = document.createElement('div');
+                monthBox.style.cssText = `
+                    background: ${monthData.trades > 0 ? (monthData.pnl >= 0 ? '#f0f9ff' : '#fef2f2') : '#f8fafc'};
+                    border: 2px solid ${monthData.trades > 0 ? (monthData.pnl >= 0 ? '#3b82f6' : '#ef4444') : '#e2e8f0'};
+                    border-radius: 12px;
+                    padding: 1rem;
+                    text-align: center;
+                    cursor: ${monthData.trades > 0 ? 'pointer' : 'default'};
+                    transition: transform 0.2s ease;
+                `;
+                
+                monthBox.innerHTML = `
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem;">${month}</div>
+                    <div style="font-size: 1.3rem; font-weight: 700; color: ${monthData.pnl >= 0 ? '#10b981' : '#ef4444'}; margin-bottom: 0.3rem;">
+                        ${monthData.pnl >= 0 ? '$' : '-$'}${Math.abs(monthData.pnl).toFixed(2)}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #6b7280;">${monthData.trades} trades</div>
+                `;
+                
+                grid.appendChild(monthBox);
+            });
+            
+            // Update yearly summary
+            const winRate = yearlyTrades > 0 ? ((yearlyWins / yearlyTrades) * 100).toFixed(1) : '0';
+            document.getElementById('yearly-pnl').textContent = `${yearlyPnl >= 0 ? '$' : '-$'}${Math.abs(yearlyPnl).toFixed(2)}`;
+            document.getElementById('yearly-pnl').style.color = yearlyPnl >= 0 ? '#10b981' : '#ef4444';
+            document.getElementById('yearly-trades').textContent = yearlyTrades;
+            document.getElementById('yearly-winrate').textContent = `${winRate}%`;
+            document.getElementById('yearly-best').textContent = bestPnl > -Infinity ? bestMonth : '-';
+        })
+        .catch(error => {
+            console.error('Error loading monthly data:', error);
+        });
+}
+</script>
+
+<!-- Hidden data elements for charts -->
+<script type="application/json" id="weekday-labels-data">{{ weekday_labels | tojson }}</script>
+<script type="application/json" id="weekday-wins-data">{{ weekday_wins | tojson }}</script>
+<script type="application/json" id="weekday-losses-data">{{ weekday_losses | tojson }}</script>
+<script type="application/json" id="hourly-labels-data">{{ hourly_labels | tojson }}</script>
+<script type="application/json" id="hourly-wins-data">{{ hourly_wins | tojson }}</script>
+<script type="application/json" id="hourly-losses-data">{{ hourly_losses | tojson }}</script>
+<script type="application/json" id="entry-type-labels-data">{{ chart_labels | tojson }}</script>
+<script type="application/json" id="entry-type-wins-data">{{ chart_wins | tojson }}</script>
+<script type="application/json" id="entry-type-losses-data">{{ chart_losses | tojson }}</script>
+<script type="application/json" id="entry-type-totals-data">{{ chart_totals | tojson }}</script>
+
+{% endblock %}
+

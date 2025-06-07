@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Add Trade{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 style="color: #000;">Add Trade</h1>
+  
+  <!-- Upload Form -->
+  <form action="{{ url_for('add_trade') }}" method="post" enctype="multipart/form-data" style="margin-top:2rem; max-width:500px;">
+    <div class="form-group">
+      <label for="file" style="color: #000;">HTML Report</label>
+      <input type="file" name="file" id="file" accept=".html,.htm" required class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Upload Report</button>
+  </form>
+</div>
+{% endblock %} 

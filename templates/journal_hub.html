@@ -1,0 +1,818 @@
+{% extends "base.html" %}
+
+{% block title %}Journal Hub{% endblock %}
+
+{% block content %}
+<style>
+.direction-buy { color: #27ae60; font-weight: 600; }
+.direction-sell { color: #e74c3c; font-weight: 600; }
+</style>
+
+<div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1 style="color: #222;">Trade Overview</h1>
+    <a href="{{ url_for('add_trade') }}" class="log-trade-btn">+ Log Trade</a>
+  </div>
+</div>
+<div style="position: relative; width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;">
+  <form id="filterForm" method="get" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-bottom: 0.7rem; padding: 0.5rem 1rem 0.2rem 1rem; background: #fafafd; border-radius: 10px; border: 1px solid #e0e0e0; max-width: 700px; margin-left: auto; margin-right: auto; width: 100%;">
+    <!-- Aktive Filter als Chips -->
+    {% for field, label in filter_fields %}
+      {% if filters.get(field) or ((field == 'date' or field == 'exit_date') and (request.args.get(field + '_op') or request.args.get(field))) or (field == 'pnl' and (request.args.get('pnl_op') or request.args.get('pnl'))) %}
+        <div class="filter-chip" data-field="{{ field }}" style="display: flex; align-items: center; background: #ede9fe; color: #7c5cff; border-radius: 12px; padding: 0.12rem 0.7rem; margin-right: 0.2rem; font-size: 0.97rem; height: 28px;">
+          <span class="filter-chip-label" style="font-weight: 500;">
+            {{ label }}:
+            {% if field == 'date' or field == 'exit_date' %}
+              {% set op = request.args.get(field + '_op', 'is') %}
+              {% set v1 = request.args.get(field, '') %}
+              {% set v2 = request.args.get(field + '2', '') %}
+              {% if op == 'is' %}ist {{ v1 }}{% elif op == 'is_before' %}vor {{ v1 }}{% elif op == 'is_after' %}nach {{ v1 }}{% elif op == 'is_on_or_before' %}am oder vor {{ v1 }}{% elif op == 'is_on_or_after' %}am oder nach {{ v1 }}{% elif op == 'is_between' %}zwischen {{ v1 }} und {{ v2 }}{% elif op == 'is_empty' %}leer{% elif op == 'is_not_empty' %}nicht leer{% endif %}
+            {% elif field == 'pnl' %}
+              {% set op = request.args.get('pnl_op', 'eq') %}
+              {% set v1 = request.args.get('pnl', '') %}
+              {% set v2 = request.args.get('pnl2', '') %}
+              {% if op == 'eq' %}gleich ${{ "%.2f"|format(v1|float) }}{% elif op == 'gt' %}über ${{ "%.2f"|format(v1|float) }}{% elif op == 'lt' %}unter ${{ "%.2f"|format(v1|float) }}{% elif op == 'gte' %}über oder gleich ${{ "%.2f"|format(v1|float) }}{% elif op == 'lte' %}unter oder gleich ${{ "%.2f"|format(v1|float) }}{% elif op == 'between' %}zwischen ${{ "%.2f"|format(v1|float) }} und ${{ "%.2f"|format(v2|float) }}{% endif %}
+            {% else %}
+              {{ filters[field] }}
+            {% endif %}
+          </span>
+          <button type="button" class="edit-filter-btn" title="Bearbeiten" style="background: none; border: none; color: #7c5cff; font-size: 1.1rem; margin-left: 0.2rem; cursor: pointer; line-height: 1;">✏️</button>
+          <button type="button" class="remove-filter-btn" data-field="{{ field }}" style="background: none; border: none; color: #7c5cff; font-size: 1.1rem; margin-left: 0.2rem; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+      {% endif %}
+    {% endfor %}
+    <!-- Dropdown zum Hinzufügen neuer Filter -->
+    <select id="addFilterSelect" style="min-width: 120px; padding: 0.2rem 0.5rem; border-radius: 7px; border: 1px solid #ccc; color: #7c5cff; font-weight: 500; font-size: 0.97rem; height: 28px;">
+      <option value="">+ Filter hinzufügen</option>
+      {% for field, label in filter_fields %}
+        {% if not filters.get(field) and not ((field == 'date' or field == 'exit_date') and (request.args.get(field + '_op') or request.args.get(field))) and not (field == 'pnl' and (request.args.get('pnl_op') or request.args.get('pnl'))) %}
+          <option value="{{ field }}">{{ label }}</option>
+        {% endif %}
+      {% endfor %}
+    </select>
+    <!-- Dynamisch generierte Inputs für neue Filter -->
+    <span id="newFilterInputContainer"></span>
+    <button type="submit" class="btn btn-primary" style="background: #7c5cff; color: #fff; border: none; border-radius: 7px; padding: 0.2rem 0.8rem; font-weight: 500; font-size: 0.97rem; height: 28px;">Filtern</button>
+    {% if filters or request.args.get('date_op') or request.args.get('date') or request.args.get('pnl_op') or request.args.get('pnl') %}
+      <a href="{{ url_for('journal_hub') }}" class="btn btn-secondary" style="background: #f4f4f4; color: #7c5cff; border: none; border-radius: 7px; padding: 0.2rem 0.8rem; font-weight: 500; font-size: 0.97rem; height: 28px;">Alle Filter entfernen</a>
+    {% endif %}
+  </form>
+  <div style="overflow-x: auto; width: 100%; padding: 0;">
+    <table id="tradesTable" style="width:100%; border-collapse:separate; border-spacing:0; box-shadow: none; border-radius: 14px; overflow: hidden; background: #fff;">
+      <thead>
+        <tr style="background: linear-gradient(135deg, #7c5cff, #6366f1); color: white;">
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px; width: 50px;">NR.</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;"><input type="checkbox" id="selectAllTrades"></th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">EINSTIEGSZEIT</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">SYMBOL</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">TYP</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">VOLUMEN</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">AUSSTIEGSZEIT</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">KOMMISSION</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">SWAP</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;">GEWINN</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px; width: 80px;">RATING</th>
+          <th style="padding: 1rem; text-align: center; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;"></th>
+        </tr>
+      </thead>
+      <tbody id="tradesBody">
+        {% for trade in trades %}
+        <tr class="trade-row" data-detail-url="{{ url_for('trade_detail', trade_id=trade.id) }}" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s ease; cursor: pointer;">
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; font-weight: 600; color: #7c5cff;">{{ trades|length - loop.index + 1 }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;"><input type="checkbox" class="trade-checkbox" value="{{ trade.id }}" onclick="event.stopPropagation();"></td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151; position: relative;">
+            <form method="POST" action="{{ url_for('delete_trade', trade_id=trade.id) }}" style="display:inline;">
+              <button type="submit" class="delete-btn" title="Löschen">
+                <i class="fa fa-trash"></i>
+              </button>
+            </form>
+            {{ trade.date.strftime('%Y.%m.%d %H:%M:%S') if trade.date else '-' }}
+          </td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; font-weight: 600; color: #1e293b;">{{ trade.symbol or '-' }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem;">
+            <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: {% if trade.direction == 'buy' %}#dcfce7; color: #166534{% else %}#fef2f2; color: #991b1b{% endif %};">
+              {{ trade.direction.upper() if trade.direction else '-' }}
+            </span>
+          </td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">{{ '%.2f'|format(trade.position_size) if trade.position_size else '0.00' }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">{{ trade.exit_date.strftime('%Y.%m.%d %H:%M:%S') if trade.exit_date else '-' }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">${{ '%.2f'|format(trade.kommission) if trade.kommission else '0.00' }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #374151;">${{ '%.2f'|format(trade.swap) if trade.swap else '0.00' }}</td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; font-weight: 700;">
+            <span style="color: {% if ((trade.pnl or 0) + (trade.kommission or 0) + (trade.swap or 0)) >= 0 %}#15803d{% else %}#dc2626{% endif %};">
+              ${{ '%.2f' % ((trade.pnl or 0) + (trade.kommission or 0) + (trade.swap or 0)) }}
+            </span>
+          </td>
+          <td style="padding: 1rem; text-align: center; font-size: 0.95rem; color: #ffd700; font-weight: 600;">
+            {{ (trade.trade_rating or 0) | int }} ★
+          </td>
+          <td style="padding:0.9rem 0.7rem; background: transparent; border: none; width: 60px; min-width: 60px; max-width: 60px; text-align: center; display: flex; align-items: center; justify-content: center;">
+            <div class="menu-trigger" style="width:100%; height:100%; display: flex; align-items: center; justify-content: center; gap: 0.2rem; opacity: 0; transition: opacity 0.15s;">
+              <span class="menu-dots" style="font-size: 1.5rem; color: #222; cursor: pointer;">&#8942;</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem; padding: 0;">
+    <label for="tradesPerPage" style="font-size: 1rem; color: #444;">Show</label>
+    <select id="tradesPerPage" class="form-control" style="max-width: 90px;">
+      <option value="10" {% if trades_per_page == '10' %}selected{% endif %}>10</option>
+      <option value="25" {% if trades_per_page == '25' %}selected{% endif %}>25</option>
+      <option value="50" {% if trades_per_page == '50' %}selected{% endif %}>50</option>
+      <option value="100" {% if trades_per_page == '100' %}selected{% endif %}>100</option>
+      <option value="250" {% if trades_per_page == '250' %}selected{% endif %}>250</option>
+      <option value="500" {% if trades_per_page == '500' %}selected{% endif %}>500</option>
+    </select>
+    <span style="font-size: 1rem; color: #444;">trades per page</span>
+    <span style="font-size: 0.9rem; color: #888; margin-left: 1rem;">(showing {{ trades|length }} trade{{ 's' if trades|length != 1 else '' }}, sorted by newest entry date first)</span>
+  </div>
+  <!-- Popup für Multi-Löschung -->
+  <div id="multiDeletePopup" style="display:none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 1000; background: #fff; border: 1.5px solid #e74c3c; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border-radius: 10px; padding: 1.1rem 2.2rem; font-size: 1.1rem; color: #222; align-items: center; gap: 1.2rem;">
+    <span id="selectedCount"></span>
+    <button id="deleteSelectedBtn" class="btn btn-danger" style="background: #e74c3c; color: #fff; border: none; padding: 0.5rem 1.2rem; border-radius: 6px; font-size: 1rem; cursor: pointer;">Löschen</button>
+    <button id="closePopupBtn" style="background: none; border: none; color: #888; font-size: 1.2rem; margin-left: 1rem; cursor: pointer;">&#10005;</button>
+  </div>
+</div>
+<style>
+.filter-chip { margin-bottom: 0.1rem !important; }
+#filterForm .form-control, #filterForm select, #filterForm input, #filterForm button {
+  font-size: 0.97rem !important;
+  height: 28px !important;
+  padding-top: 0.1rem !important;
+  padding-bottom: 0.1rem !important;
+}
+@media (max-width: 800px) {
+  #filterForm { max-width: 100% !important; }
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #7c5cff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+  z-index: 10;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Smooth Transitions */
+.trade-row {
+  transition: all 0.2s ease-in-out !important;
+}
+
+.trade-row:hover {
+  background-color: #f8f9ff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 92, 255, 0.1);
+}
+
+/* Error States */
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  display: none;
+}
+
+.success-message {
+  background: #efe;
+  border: 1px solid #cfc;
+  color: #3c3;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  display: none;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+<script>
+// Dynamische Filter-Chips entfernen
+Array.from(document.getElementsByClassName('remove-filter-btn')).forEach(btn => {
+  btn.addEventListener('click', function() {
+    const field = btn.getAttribute('data-field');
+    const url = new URL(window.location.href);
+    url.searchParams.delete(field);
+    
+    // Spezielle Behandlung für Felder mit Operatoren
+    if (field === 'date' || field === 'exit_date') {
+      url.searchParams.delete(field + '_op');
+      url.searchParams.delete(field + '2');
+    } else if (field === 'pnl') {
+      url.searchParams.delete('pnl_op');
+      url.searchParams.delete('pnl2');
+    }
+    
+    window.location.href = url.toString();
+  });
+});
+// Filter hinzufügen: Dropdown zeigt Input
+const addFilterSelect = document.getElementById('addFilterSelect');
+const newFilterInputContainer = document.getElementById('newFilterInputContainer');
+addFilterSelect.addEventListener('change', function() {
+  newFilterInputContainer.innerHTML = '';
+  if (!addFilterSelect.value) return;
+  // Spezialfall: Einstiegszeit (date) oder Ausstiegszeit (exit_date)
+  if (addFilterSelect.value === 'date' || addFilterSelect.value === 'exit_date') {
+    // Operator-Auswahl
+    const opSelect = document.createElement('select');
+    opSelect.name = addFilterSelect.value + '_op';
+    opSelect.id = addFilterSelect.value + 'OpSelect';
+    opSelect.className = 'form-control';
+    opSelect.style = 'min-width: 140px; margin-right: 0.5rem;';
+    const ops = [
+      {v:'is', t:'Ist'},
+      {v:'is_before', t:'Vor'},
+      {v:'is_after', t:'Nach'},
+      {v:'is_on_or_before', t:'Am oder vor'},
+      {v:'is_on_or_after', t:'Am oder nach'},
+      {v:'is_between', t:'Zwischen'},
+      {v:'is_empty', t:'Leer'},
+      {v:'is_not_empty', t:'Nicht leer'}
+    ];
+    ops.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.v; opt.textContent = o.t;
+      opSelect.appendChild(opt);
+    });
+    newFilterInputContainer.appendChild(opSelect);
+    // Datum-Inputs
+    const dateInput = document.createElement('input');
+    dateInput.type = 'text';
+    dateInput.name = addFilterSelect.value;
+    dateInput.id = addFilterSelect.value + 'Input';
+    dateInput.className = 'form-control';
+    dateInput.placeholder = 'Datum wählen';
+    dateInput.style = 'min-width: 140px; margin-left: 0.5rem;';
+    dateInput.autocomplete = 'off';
+    newFilterInputContainer.appendChild(dateInput);
+    const dateInput2 = document.createElement('input');
+    dateInput2.type = 'text';
+    dateInput2.name = addFilterSelect.value + '2';
+    dateInput2.id = addFilterSelect.value + 'Input2';
+    dateInput2.className = 'form-control';
+    dateInput2.placeholder = 'Bis...';
+    dateInput2.style = 'min-width: 140px; margin-left: 0.5rem; display: none;';
+    dateInput2.autocomplete = 'off';
+    newFilterInputContainer.appendChild(dateInput2);
+    // Litepicker
+    setTimeout(() => {
+      new Litepicker({
+        element: dateInput,
+        format: 'YYYY-MM-DD',
+        singleMode: true,
+        lang: 'de-DE',
+        dropdowns: { months: true, years: true },
+      });
+      new Litepicker({
+        element: dateInput2,
+        format: 'YYYY-MM-DD',
+        singleMode: true,
+        lang: 'de-DE',
+        dropdowns: { months: true, years: true },
+      });
+    }, 0);
+    // Operator-Logik
+    function updateDateInputs() {
+      if (opSelect.value === 'is_between') {
+        dateInput2.style.display = '';
+      } else {
+        dateInput2.style.display = 'none';
+        dateInput2.value = '';
+      }
+      if (["is_empty","is_not_empty"].includes(opSelect.value)) {
+        dateInput.style.display = 'none';
+        dateInput.value = '';
+        dateInput2.style.display = 'none';
+        dateInput2.value = '';
+      } else {
+        dateInput.style.display = '';
+      }
+    }
+    opSelect.addEventListener('change', updateDateInputs);
+    updateDateInputs();
+    return;
+  }
+  
+  // Spezielle Filter für bestimmte Felder
+  if (addFilterSelect.value === 'market_phase') {
+    const select = document.createElement('select');
+    select.name = 'market_phase';
+    select.className = 'form-control';
+    select.style = 'min-width: 140px; margin-left: 0.5rem;';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Market Phase wählen';
+    select.appendChild(defaultOption);
+    
+    const phases = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
+    phases.forEach(phase => {
+      const option = document.createElement('option');
+      option.value = phase;
+      option.textContent = phase;
+      select.appendChild(option);
+    });
+    
+    newFilterInputContainer.appendChild(select);
+    return;
+  }
+  
+  if (addFilterSelect.value === 'entry_type') {
+    const select = document.createElement('select');
+    select.name = 'entry_type';
+    select.className = 'form-control';
+    select.style = 'min-width: 140px; margin-left: 0.5rem;';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Entry Type wählen';
+    select.appendChild(defaultOption);
+    
+    const types = ['Fibonacci', 'MSS + S', 'MSS + D', 'FOMO'];
+    types.forEach(type => {
+      const option = document.createElement('option');
+      option.value = type;
+      option.textContent = type;
+      select.appendChild(option);
+    });
+    
+    newFilterInputContainer.appendChild(select);
+    return;
+  }
+  
+  if (addFilterSelect.value === 'trade_rating') {
+    const select = document.createElement('select');
+    select.name = 'trade_rating';
+    select.className = 'form-control';
+    select.style = 'min-width: 140px; margin-left: 0.5rem;';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Rating wählen';
+    select.appendChild(defaultOption);
+    
+    // Ganże und halbe Sterne von 0 bis 5
+    for (let i = 0; i <= 5; i += 0.5) {
+      const option = document.createElement('option');
+      option.value = i.toString();
+      if (i % 1 === 0) {
+        // Ganze Sterne
+        option.textContent = i + ' ★';
+      } else {
+        // Halbe Sterne
+        option.textContent = i + ' ★';
+      }
+      select.appendChild(option);
+    }
+    
+    newFilterInputContainer.appendChild(select);
+    return;
+  }
+  
+  if (addFilterSelect.value === 'account_type') {
+    const select = document.createElement('select');
+    select.name = 'account_type';
+    select.className = 'form-control';
+    select.style = 'min-width: 140px; margin-left: 0.5rem;';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Account Type wählen';
+    select.appendChild(defaultOption);
+    
+    const types = ['live', 'funded'];
+    types.forEach(type => {
+      const option = document.createElement('option');
+      option.value = type;
+      option.textContent = type === 'live' ? 'Live Account' : 'Funded Account';
+      select.appendChild(option);
+    });
+    
+    newFilterInputContainer.appendChild(select);
+    return;
+  }
+  
+  // Spezialfall für Gewinn (pnl) - mit Operator-Auswahl
+  if (addFilterSelect.value === 'pnl') {
+    // Operator-Auswahl
+    const opSelect = document.createElement('select');
+    opSelect.name = 'pnl_op';
+    opSelect.className = 'form-control';
+    opSelect.style = 'min-width: 120px; margin-left: 0.5rem;';
+    
+    const ops = [
+      {v:'eq', t:'Gleich'},
+      {v:'gt', t:'Über'},
+      {v:'lt', t:'Unter'},
+      {v:'gte', t:'Über oder gleich'},
+      {v:'lte', t:'Unter oder gleich'},
+      {v:'between', t:'Zwischen'}
+    ];
+    
+    ops.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.v; 
+      opt.textContent = o.t;
+      opSelect.appendChild(opt);
+    });
+    
+    newFilterInputContainer.appendChild(opSelect);
+    
+    // Wert-Input
+    const valueInput = document.createElement('input');
+    valueInput.type = 'number';
+    valueInput.name = 'pnl';
+    valueInput.step = '0.01';
+    valueInput.className = 'form-control';
+    valueInput.placeholder = 'Gewinn-Wert';
+    valueInput.style = 'min-width: 120px; margin-left: 0.5rem;';
+    newFilterInputContainer.appendChild(valueInput);
+    
+    // Zweiter Wert für "Zwischen"
+    const valueInput2 = document.createElement('input');
+    valueInput2.type = 'number';
+    valueInput2.name = 'pnl2';
+    valueInput2.step = '0.01';
+    valueInput2.className = 'form-control';
+    valueInput2.placeholder = 'Bis...';
+    valueInput2.style = 'min-width: 120px; margin-left: 0.5rem; display: none;';
+    newFilterInputContainer.appendChild(valueInput2);
+    
+    // Operator-Logik
+    function updatePnlInputs() {
+      if (opSelect.value === 'between') {
+        valueInput2.style.display = '';
+      } else {
+        valueInput2.style.display = 'none';
+        valueInput2.value = '';
+      }
+    }
+    
+    opSelect.addEventListener('change', updatePnlInputs);
+    updatePnlInputs();
+    
+    return;
+  }
+  
+  // Standard-Inputs für andere Felder
+  let inputType = 'text';
+  if (["position_size","kommission","swap","pnl","sl"].includes(addFilterSelect.value)) inputType = 'number';
+  const input = document.createElement('input');
+  input.type = inputType;
+  input.name = addFilterSelect.value;
+  
+  // Für numerische Felder: Dezimalzahlen mit 2 Nachkommastellen erlauben
+  if (inputType === 'number') {
+    input.step = '0.01';
+    input.min = '0';
+  }
+  
+  input.placeholder = inputType === 'number' ? 'Wert oder Bereich (z.B. 0.05:1.50)' : (addFilterSelect.value.includes('date') ? 'Datum oder Bereich (YYYY-MM-DD[:YYYY-MM-DD])' : 'Filterwert');
+  input.className = 'form-control';
+  input.style = 'min-width: 140px; margin-left: 0.5rem;';
+  newFilterInputContainer.appendChild(input);
+});
+// Beim Absenden: Query-Params setzen
+const filterForm = document.getElementById('filterForm');
+filterForm.addEventListener('submit', function(e) {
+  // NICHT preventDefault() aufrufen - lass das normale Form-Submit durchlaufen
+  // Das Form wird automatisch alle Input-Felder mit name-Attributen senden
+  
+  // Nur bei neuen Filtern eingreifen, um sie zur URL hinzuzufügen
+  const select = addFilterSelect;
+  if (select.value) {
+    // Spezielle Behandlung für Profit-Filter
+    if (select.value === 'pnl') {
+      const opSelect = filterForm.querySelector('[name="pnl_op"]');
+      const valueInput = filterForm.querySelector('[name="pnl"]');
+      const valueInput2 = filterForm.querySelector('[name="pnl2"]');
+      
+      if (opSelect && valueInput && valueInput.value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('pnl_op', opSelect.value);
+        url.searchParams.set('pnl', valueInput.value);
+        if (valueInput2 && valueInput2.value) {
+          url.searchParams.set('pnl2', valueInput2.value);
+        }
+        window.location.href = url.toString();
+        e.preventDefault();
+        return;
+      }
+    } else {
+      const input = filterForm.querySelector(`[name="${select.value}"]`);
+      if (input && input.value) {
+        // Wenn ein neuer Filter hinzugefügt wird, zur URL hinzufügen
+        const url = new URL(window.location.href);
+        url.searchParams.set(select.value, input.value);
+        window.location.href = url.toString();
+        e.preventDefault();
+        return;
+      }
+    }
+  }
+  
+  // Andernfalls: Normales Form-Submit durchlaufen lassen
+  // Das form wird automatisch alle Input-Felder senden
+});
+// Checkbox-Logik für Multi-Select
+const selectAll = document.getElementById('selectAllTrades');
+const checkboxes = document.querySelectorAll('.trade-checkbox');
+const popup = document.getElementById('multiDeletePopup');
+const selectedCount = document.getElementById('selectedCount');
+const closePopupBtn = document.getElementById('closePopupBtn');
+const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+function updatePopup() {
+  const selected = Array.from(document.querySelectorAll('.trade-checkbox:checked'));
+  if (selected.length > 0) {
+    popup.style.display = 'flex';
+    selectedCount.textContent = `${selected.length} Trade${selected.length > 1 ? 's' : ''} ausgewählt`;
+  } else {
+    popup.style.display = 'none';
+  }
+}
+
+selectAll.addEventListener('change', function() {
+  checkboxes.forEach(cb => cb.checked = selectAll.checked);
+  updatePopup();
+});
+checkboxes.forEach(cb => {
+  cb.addEventListener('change', function() {
+    if (!cb.checked) selectAll.checked = false;
+    else if ([...checkboxes].every(c => c.checked)) selectAll.checked = true;
+    updatePopup();
+  });
+});
+closePopupBtn.addEventListener('click', function() {
+  checkboxes.forEach(cb => cb.checked = false);
+  selectAll.checked = false;
+  updatePopup();
+});
+
+// Trades Per Page Functionality with Loading State
+const tradesPerPageSelect = document.getElementById('tradesPerPage');
+if (tradesPerPageSelect) {
+  tradesPerPageSelect.addEventListener('change', function() {
+    showLoading();
+    const url = new URL(window.location.href);
+    url.searchParams.set('trades_per_page', this.value);
+    window.location.href = url.toString();
+  });
+}
+
+// Utility Functions
+function showLoading() {
+  document.body.classList.add('loading');
+}
+
+function hideLoading() {
+  document.body.classList.remove('loading');
+}
+
+function showError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-message';
+  errorDiv.textContent = message;
+  errorDiv.style.display = 'block';
+  document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.container').firstChild);
+  setTimeout(() => errorDiv.remove(), 5000);
+}
+
+function showSuccess(message) {
+  const successDiv = document.createElement('div');
+  successDiv.className = 'success-message';
+  successDiv.textContent = message;
+  successDiv.style.display = 'block';
+  document.querySelector('.container').insertBefore(successDiv, document.querySelector('.container').firstChild);
+  setTimeout(() => successDiv.remove(), 3000);
+}
+
+// Debounced Search Function
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Enhanced Delete Function with Better Error Handling
+deleteBtn.addEventListener('click', function() {
+  const selected = Array.from(document.querySelectorAll('.trade-checkbox:checked')).map(cb => cb.value);
+  if (selected.length === 0) { 
+    showError('Keine Trades ausgewählt!'); 
+    return; 
+  }
+  if (!confirm(`${selected.length} Trade${selected.length > 1 ? 's' : ''} wirklich löschen?`)) return;
+  
+  showLoading();
+  fetch("{{ url_for('delete_trades') }}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trade_ids: selected })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Netzwerkfehler');
+    return response.json();
+  })
+  .then(data => {
+    hideLoading();
+    if (data.status === 'success') {
+      showSuccess(`${selected.length} Trade${selected.length > 1 ? 's' : ''} erfolgreich gelöscht`);
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      throw new Error(data.message || 'Unbekannter Fehler');
+    }
+  })
+  .catch(error => {
+    hideLoading();
+    showError('Fehler beim Löschen: ' + error.message);
+  });
+});
+
+// Smooth Row Interactions
+document.querySelectorAll('.trade-row').forEach(function(row) {
+  const menuTrigger = row.querySelector('.menu-trigger');
+  
+  // Enhanced click handling with loading state
+  row.addEventListener('click', function(e) {
+    if (menuTrigger && menuTrigger.contains(e.target)) return;
+    if (e.target.tagName === 'INPUT' || e.target.closest('form')) return;
+    
+    showLoading();
+    const url = row.getAttribute('data-detail-url');
+    if (url) window.location.href = url;
+  });
+  
+  // Enhanced menu trigger
+  if (menuTrigger) {
+    menuTrigger.onclick = function(e) {
+      e.stopPropagation();
+    };
+  }
+});
+
+// Page Load Performance
+document.addEventListener('DOMContentLoaded', function() {
+  hideLoading(); // Hide any loading state on page load
+});
+
+// Editierfunktion für Filter-Chips
+Array.from(document.getElementsByClassName('edit-filter-btn')).forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const chip = btn.closest('.filter-chip');
+    const field = chip.getAttribute('data-field');
+    // Ersetze Label durch Input
+    const labelSpan = chip.querySelector('.filter-chip-label');
+    let currentValue = labelSpan.textContent.split(':').slice(1).join(':').trim();
+    chip.classList.add('editing');
+    labelSpan.style.display = 'none';
+    btn.style.display = 'none';
+    // Für Datum Spezialfall (date, exit_date)
+    if (field === 'date' || field === 'exit_date') {
+      // Operator-Auswahl + Datum
+      const opSelect = document.createElement('select');
+      opSelect.className = 'form-control';
+      opSelect.style = 'min-width: 90px; margin-right: 0.2rem;';
+      const ops = [
+        {v:'is', t:'Ist'},
+        {v:'is_before', t:'Vor'},
+        {v:'is_after', t:'Nach'},
+        {v:'is_on_or_before', t:'Am oder vor'},
+        {v:'is_on_or_after', t:'Am oder nach'},
+        {v:'is_between', t:'Zwischen'},
+        {v:'is_empty', t:'Leer'},
+        {v:'is_not_empty', t:'Nicht leer'}
+      ];
+      const currentOp = new URLSearchParams(window.location.search).get(field + '_op') || 'is';
+      ops.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.v; opt.textContent = o.t;
+        if (o.v === currentOp) opt.selected = true;
+        opSelect.appendChild(opt);
+      });
+      chip.appendChild(opSelect);
+      // Datum-Inputs
+      const dateInput = document.createElement('input');
+      dateInput.type = 'text';
+      dateInput.className = 'form-control';
+      dateInput.style = 'min-width: 90px; margin-left: 0.2rem;';
+      dateInput.placeholder = 'Datum wählen';
+      dateInput.autocomplete = 'off';
+      dateInput.value = new URLSearchParams(window.location.search).get(field) || '';
+      chip.appendChild(dateInput);
+      const dateInput2 = document.createElement('input');
+      dateInput2.type = 'text';
+      dateInput2.className = 'form-control';
+      dateInput2.style = 'min-width: 90px; margin-left: 0.2rem; display: none;';
+      dateInput2.placeholder = 'Bis...';
+      dateInput2.autocomplete = 'off';
+      dateInput2.value = new URLSearchParams(window.location.search).get(field + '2') || '';
+      chip.appendChild(dateInput2);
+      setTimeout(() => {
+        new Litepicker({ element: dateInput, format: 'YYYY-MM-DD', singleMode: true, lang: 'de-DE', dropdowns: { months: true, years: true } });
+        new Litepicker({ element: dateInput2, format: 'YYYY-MM-DD', singleMode: true, lang: 'de-DE', dropdowns: { months: true, years: true } });
+      }, 0);
+      function updateDateInputs() {
+        if (opSelect.value === 'is_between') {
+          dateInput2.style.display = '';
+        } else {
+          dateInput2.style.display = 'none';
+          dateInput2.value = '';
+        }
+        if (["is_empty","is_not_empty"].includes(opSelect.value)) {
+          dateInput.style.display = 'none';
+          dateInput.value = '';
+          dateInput2.style.display = 'none';
+          dateInput2.value = '';
+        } else {
+          dateInput.style.display = '';
+        }
+      }
+      opSelect.addEventListener('change', updateDateInputs);
+      updateDateInputs();
+      // Speichern-Button
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.textContent = 'OK';
+      saveBtn.className = 'btn btn-primary';
+      saveBtn.style = 'margin-left: 0.2rem; padding: 0.1rem 0.5rem; font-size: 0.97rem; height: 26px;';
+      chip.appendChild(saveBtn);
+      saveBtn.onclick = function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set(field + '_op', opSelect.value);
+        if (opSelect.value === 'is_between') {
+          url.searchParams.set(field, dateInput.value);
+          url.searchParams.set(field + '2', dateInput2.value);
+        } else if (["is_empty","is_not_empty"].includes(opSelect.value)) {
+          url.searchParams.delete(field);
+          url.searchParams.delete(field + '2');
+        } else {
+          url.searchParams.set(field, dateInput.value);
+          url.searchParams.delete(field + '2');
+        }
+        window.location.href = url.toString();
+      };
+      return;
+    }
+    // Standard-Input für andere Felder
+    const input = document.createElement('input');
+    input.type = ['position_size','kommission','swap','pnl','sl'].includes(field) ? 'number' : 'text';
+    
+    // Für numerische Felder: Dezimalzahlen mit 2 Nachkommastellen erlauben
+    if (input.type === 'number') {
+      input.step = '0.01';
+      input.min = '0';
+    }
+    
+    input.className = 'form-control';
+    input.style = 'min-width: 90px; margin-left: 0.2rem;';
+    input.value = filters[field];
+    chip.appendChild(input);
+    input.focus();
+    // Speichern-Button
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.textContent = 'OK';
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.style = 'margin-left: 0.2rem; padding: 0.1rem 0.5rem; font-size: 0.97rem; height: 26px;';
+    chip.appendChild(saveBtn);
+    saveBtn.onclick = function() {
+      const url = new URL(window.location.href);
+      url.searchParams.set(field, input.value);
+      window.location.href = url.toString();
+    };
+    input.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter') saveBtn.click();
+    });
+  });
+});
+</script>
+{% endblock %} 
