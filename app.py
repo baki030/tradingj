@@ -943,9 +943,9 @@ def process_html_file(filepath, user_id):
                             if exit_time and profit and symbol:
                                 print(f"Processing trade: {symbol} | {entry_time} -> {exit_time} | P&L: {profit} | Volume: {volume}")
                                 
-                                # Parse datetime
-                                entry_date = datetime.strptime(entry_time, '%Y.%m.%d %H:%M:%S')
-                                exit_date = datetime.strptime(exit_time, '%Y.%m.%d %H:%M:%S')
+                                # Parse datetime and subtract 1 hour for timezone adjustment
+                                entry_date = datetime.strptime(entry_time, '%Y.%m.%d %H:%M:%S') - timedelta(hours=1)
+                                exit_date = datetime.strptime(exit_time, '%Y.%m.%d %H:%M:%S') - timedelta(hours=1)
                                 
                                 # Parse financial values
                                 try:
