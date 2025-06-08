@@ -862,7 +862,7 @@ def add_trade():
     return redirect(url_for('dashboard'))
 
 def process_html_file(filepath, user_id):
-    """Process HTML file and import trades. Returns number of trades imported."""
+    """Process HTML file and import trades. Returns dict with imported and skipped counts."""
     import re
     from bs4 import BeautifulSoup
     import chardet
@@ -885,6 +885,7 @@ def process_html_file(filepath, user_id):
         
         # Find all tables
         trades_imported = 0
+        trades_skipped = 0
         
         for table in soup.find_all('table'):
             rows = table.find_all('tr')
@@ -983,12 +984,13 @@ def process_html_file(filepath, user_id):
                                     print(f"No account found for user {user_id}")
                                     continue
                                 
-                                # Check if trade already exists (avoid duplicates)
+                                # Check if trade already exists (avoid exact duplicates only)
+                                # Only prevent exact duplicates: same symbol, entry time, exit time, and PnL
                                 existing_trade = Trade.query.filter_by(
                                     symbol=symbol,
                                     date=entry_date,
                                     exit_date=exit_date,
-                                    account_id=account.id
+                                    pnl=profit_float
                                 ).first()
                                 
                                 if not existing_trade:
@@ -1009,7 +1011,8 @@ def process_html_file(filepath, user_id):
                                     trades_imported += 1
                                     print(f"Added trade: {symbol} {profit_float} (Commission: {commission_float}, Swap: {swap_float}, Volume: {volume})")
                                 else:
-                                    print(f"Trade already exists: {symbol} {entry_time}")
+                                    trades_skipped += 1
+                                    print(f"Trade already exists (skipping): {symbol} {entry_time} -> {exit_time} (existing trade ID: {existing_trade.id})")
                                 
                         except Exception as e:
                             print(f"Error processing trade row: {e}")
@@ -1018,15 +1021,21 @@ def process_html_file(filepath, user_id):
         # Commit all trades
         if trades_imported > 0:
             db.session.commit()
-            print(f"Successfully imported {trades_imported} trades")
+            print(f"Successfully imported {trades_imported} trades, skipped {trades_skipped} duplicates")
         else:
-            print("No trades found in HTML file")
+            print(f"No new trades found in HTML file (skipped {trades_skipped} duplicates)")
         
-        return trades_imported
+        return {
+            'imported': trades_imported,
+            'skipped': trades_skipped
+        }
         
     except Exception as e:
         print(f"Error processing HTML file: {e}")
-        return 0
+        return {
+            'imported': 0,
+            'skipped': 0
+        }
 
 @app.route('/trade/<int:trade_id>', methods=['GET', 'POST'])
 def trade_detail(trade_id):
